@@ -1,21 +1,256 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Meu Projeto</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protocolos · Painel de Controle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <h1>Minha aplicação</h1>
 
-    <button id="botao">Testar API</button>
-    <p id="resultado"></p>
+<!-- ── SIDEBAR ─────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">⬡</span>
+    <span class="logo-text">Proto<strong>Ctrl</strong></span>
+  </div>
 
-    <script src="script.js"></script>
-    <input type="text" id="nome" placeholder="Nome">
-    <input type="email" id="email" placeholder="Email">
-    <button id="salvar">Salvar</button>
-    <p id="resultado"></p>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">▦</span> Dashboard
+    </button>
+    <button class="nav-item" data-page="protocolos">
+      <span class="nav-icon">≡</span> Protocolos
+    </button>
+    <button class="nav-item" data-page="importar">
+      <span class="nav-icon">↑</span> Importar CSV
+    </button>
+    <button class="nav-item" data-page="revendas">
+      <span class="nav-icon">◈</span> Revendas
+    </button>
+  </nav>
 
+  <div class="sidebar-footer">
+    <span class="api-status" id="apiStatus">
+      <span class="status-dot"></span> Conectando...
+    </span>
+  </div>
+</aside>
+
+<!-- ── MAIN ────────────────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div class="topbar-actions">
+      <span class="topbar-time" id="topbarTime"></span>
+    </div>
+  </header>
+
+  <!-- PAGE: DASHBOARD -->
+  <section class="page active" id="page-dashboard">
+    <div class="stats-grid">
+      <div class="stat-card accent">
+        <div class="stat-label">Pendentes</div>
+        <div class="stat-value" id="statPendentes">—</div>
+        <div class="stat-sub">aguardando ação</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Concluídos</div>
+        <div class="stat-value" id="statConcluidos">—</div>
+        <div class="stat-sub">resolvidos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-sub">protocolos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Revendas</div>
+        <div class="stat-value" id="statRevendas">—</div>
+        <div class="stat-sub">cadastradas</div>
+      </div>
+    </div>
+
+    <div class="section-title">Pendentes recentes</div>
+    <div class="table-wrap">
+      <table class="data-table" id="dashTable">
+        <thead>
+          <tr>
+            <th>Protocolo</th>
+            <th>Data/Hora</th>
+            <th>Revenda</th>
+            <th>Analista</th>
+            <th>Problema</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="dashTableBody">
+          <tr><td colspan="6" class="empty">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PAGE: PROTOCOLOS -->
+  <section class="page" id="page-protocolos">
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchInput" placeholder="Buscar protocolo, revenda, analista..." />
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="false">Pendentes</button>
+        <button class="filter-tab" data-filter="true">Concluídos</button>
+        <button class="filter-tab" data-filter="">Todos</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Protocolo</th>
+            <th>Data/Hora</th>
+            <th>Revenda</th>
+            <th>Analista</th>
+            <th>Problema</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="protTableBody">
+          <tr><td colspan="7" class="empty">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PAGE: IMPORTAR -->
+  <section class="page" id="page-importar">
+    <div class="import-area" id="importArea">
+      <div class="import-icon">↑</div>
+      <div class="import-label">Arraste o CSV aqui ou clique para selecionar</div>
+      <div class="import-sub">Colunas esperadas: protocolo, datahora, revenda, analista, problema, solução</div>
+      <input type="file" id="fileInput" accept=".csv" hidden />
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Selecionar arquivo</button>
+    </div>
+
+    <div class="import-result hidden" id="importResult"></div>
+  </section>
+
+  <!-- PAGE: REVENDAS -->
+  <section class="page" id="page-revendas">
+    <div class="toolbar">
+      <span></span>
+      <button class="btn btn-primary" id="btnNovaRevenda">+ Nova Revenda</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nome da Revenda</th>
+            <th>Telefone / WhatsApp</th>
+            <th>Cadastrado em</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="revTableBody">
+          <tr><td colspan="5" class="empty">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── MODAL PROTOCOLO ─────────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="modalProtocolo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Protocolo <span id="modalNumero"></span></div>
+      <button class="modal-close" onclick="fecharModal('modalProtocolo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Data/Hora</div>
+          <div class="info-value" id="modalDatahora"></div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Revenda</div>
+          <div class="info-value" id="modalRevenda"></div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Analista</div>
+          <div class="info-value" id="modalAnalista"></div>
+        </div>
+        <div class="info-item full">
+          <div class="info-label">Problema</div>
+          <div class="info-value" id="modalProblema"></div>
+        </div>
+        <div class="info-item full">
+          <div class="info-label">Solução registrada</div>
+          <div class="info-value" id="modalSolucao"></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Observação</label>
+        <textarea class="field-input" id="modalObs" rows="3" placeholder="Adicionar observação..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Status</label>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="modalConcluido" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="toggleLabel">Pendente</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="gerarMensagemWhatsApp()">
+        <span>📱</span> WhatsApp
+      </button>
+      <button class="btn btn-primary" onclick="salvarProtocolo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL REVENDA ───────────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="modalRevenda">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="modalRevendaTitulo">Nova Revenda</div>
+      <button class="modal-close" onclick="fecharModal('modalRevenda')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="revendaEditId" />
+      <div class="field-group">
+        <label class="field-label">Nome da Revenda</label>
+        <input type="text" class="field-input" id="revendaNome" placeholder="Ex: Distribuidora Sul Ltda" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Telefone / WhatsApp</label>
+        <input type="text" class="field-input" id="revendaTelefone" placeholder="Ex: 41999887766" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModal('modalRevenda')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarRevenda()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ───────────────────────────────────────────────────────────────── -->
+<div class="toast hidden" id="toast"></div>
+
+<script src="script.js"></script>
 </body>
 </html>
