@@ -215,7 +215,7 @@ async function abrirProtocolo(id) {
 
     document.getElementById('modalNumero').textContent = p.numero_protocolo;
     document.getElementById('modalDatahora').textContent = formatarData(p.datahora);
-    document.getElementById('modalRevenda').textContent = p.revenda || '—';
+    document.getElementById('modalRevendaNome').textContent = p.revenda || '—';
     document.getElementById('modalAnalista').textContent = p.analista || '—';
     document.getElementById('modalProblema').textContent = p.problema || '—';
     document.getElementById('modalSolucao').textContent = p.solucao || '—';
@@ -277,13 +277,15 @@ function gerarMensagemWhatsApp() {
   const protocolo = currentProtocolo.numero_protocolo;
 
   const mensagem =
-    `${saudacao}! 😊\n\n` +
+    `${saudacao}!\n\n` +
     `Referente ao protocolo *#${protocolo}* registrado em ${datahora}.\n\n` +
     `*Assunto:* ${problema}\n\n` +
-    `Gostaria de verificar se o problema foi solucionado ou se ainda há algo que possamos ajudar. 🙏`;
+    `Gostaria de verificar se o problema foi solucionado ou se ainda precisam de auxilio.`;
 
-  // Buscar número de telefone da revenda vinculada
-  const telefone = currentProtocolo.revenda_rel?.telefone || '';
+  // Número: tenta revenda cadastrada, depois NUMEROTELEFONE do CSV
+  const telefone = currentProtocolo.revenda_rel?.telefone
+    || currentProtocolo.numero_telefone
+    || '';
   const numeroLimpo = telefone.replace(/\D/g, '');
 
   const url = `https://wa.me/${numeroLimpo}?text=${encodeURIComponent(mensagem)}`;
