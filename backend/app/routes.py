@@ -181,9 +181,9 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
     for i, row in enumerate(reader, start=2):
         total += 1
 
-        # ── Filtrar apenas pendentes pela coluna SITUACAO ──────────────────
-        situacao_val = _col(row, headers_lower, "situacao").lower()
-        if situacao_val and situacao_val not in SITUACOES_PENDENTE:
+        # ── Filtrar: ignora registros onde RESOLVIDO = "Sim" ──────────────
+        resolvido_val = _col(row, headers_lower, "resolvido").strip().lower()
+        if resolvido_val == "sim":
             ignorados += 1
             continue
 
