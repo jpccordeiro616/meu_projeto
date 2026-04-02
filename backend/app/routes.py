@@ -1,35 +1,56 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import Optional
 import csv
 import io
 from datetime import datetime
+from pathlib import Path
 
 from app.database import get_db
 from app import models, schemas
 
 router = APIRouter()
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Mapeamento EXATO das colunas do CSV ──────────────────────────────────────
+#
+#  PROTOCOLO|DATAHORA|SITUACAO|REVENDA|ANALISTA|PROBLEMA|SOLUCAO|ATENDENTE|
+#  ATENDIMENTOID|REVENDAID|USUARIOANALISTAID|ATENDIMENTOPROBLEMAID|SITUACAOID|
+#  USUARIOATENDENTEID|ATENDIMENTOSOLUCAOID|TECNICONOME|TIPO|CLIENTEID|CNPJ|
+#  AVALIACAOREVENDA|RESOLVIDO|AVALIADO|NUMEROTELEFONE|TECNICOREVENDA|MODULO
 
-COLUNAS_ESPERADAS = {
-    "protocolo": ["protocolo", "numero_protocolo", "número", "numero", "nº"],
-    "datahora":  ["datahora", "data_hora", "data hora", "data/hora", "abertura", "data"],
-    "revenda":   ["revenda", "cliente", "empresa"],
-    "analista":  ["analista", "responsavel", "responsável", "atendente"],
-    "problema":  ["problema", "descricao", "descrição", "assunto", "ocorrencia", "ocorrência"],
-    "solucao":   ["solucao", "solução", "resolucao", "resolução", "fechamento"],
+CSV_COLUNAS = {
+    "numero_protocolo": "PROTOCOLO",
+    "datahora":         "DATAHORA",
+    "situacao":         "SITUACAO",
+    "revenda":          "REVENDA",
+    "analista":         "ANALISTA",
+    "problema":         "PROBLEMA",
+    "solucao":          "SOLUCAO",
+    "atendente":        "ATENDENTE",
+    "atendimento_id":   "ATENDIMENTOID",
+    "revenda_csv_id":   "REVENDAID",
+    "tecnico_nome":     "TECNICONOME",
+    "tipo":             "TIPO",
+    "cliente_id":       "CLIENTEID",
+    "cnpj":             "CNPJ",
+    "avaliacao_revenda":"AVALIACAOREVENDA",
+    "resolvido":        "RESOLVIDO",
+    "avaliado":         "AVALIADO",
+    "numero_telefone":  "NUMEROTELEFONE",
+    "tecnico_revenda":  "TECNICOREVENDA",
+    "modulo":           "MODULO",
 }
 
-STATUS_PENDENTE = ["pendente", "aberto", "em aberto", "aguardando", "em andamento", "open"]
+# Valores da coluna SITUACAO considerados pendentes
+SITUACOES_PENDENTE = {"pendente", "aberto", "em aberto", "aguardando", "em andamento", "open", "1"}
 
 
-def mapear_coluna(headers: list[str], variantes: list[str]) -> Optional[str]:
-    """Encontra o nome da coluna no CSV baseado em variantes conhecidas."""
-    for h in headers:
-        if h.strip().lower() in variantes:
-            return h
-    return None
+def _col(row: dict, headers_lower: dict, campo: str) -> str:
+    """Retorna o valor de uma coluna pelo nome (case-insensitive), ou ''."""
+    nome_csv = CSV_COLUNAS.get(campo, "")
+    chave = headers_lower.get(nome_csv.lower(), nome_csv)
+    return (row.get(chave) or "").strip()
 
 
 def parse_datahora(valor: str) -> Optional[datetime]:
@@ -111,6 +132,132 @@ def listar_protocolos(
     return q.order_by(models.Protocolo.datahora.desc()).all()
 
 
+# ── Import CSV — DEVE ficar ANTES de /{protocolo_id} para não colidir ────────
+
+@router.post("/protocolos/importar", response_model=schemas.ImportResult)
+async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Envie um arquivo .csv")
+
+    conteudo = await file.read()
+
+    # Detectar encoding
+    texto = None
+    for enc in ("utf-8-sig", "utf-8", "latin-1", "cp1252"):
+        try:
+            texto = conteudo.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if texto is None:
+        raise HTTPException(status_code=400, detail="Não foi possível decodificar o arquivo.")
+
+    # Detectar delimitador: prioriza | (formato do sistema), depois ; e ,
+    amostra = texto[:4096]
+    contagens = {"|": amostra.count("|"), ";": amostra.count(";"), ",": amostra.count(",")}
+    delimitador = max(contagens, key=contagens.get)
+
+    reader = csv.DictReader(io.StringIO(texto), delimiter=delimitador)
+    headers = list(reader.fieldnames or [])
+
+    # Mapa de header em minúsculo → header original (para busca case-insensitive)
+    headers_lower = {h.strip().lower(): h.strip() for h in headers}
+
+    # Verificar se a coluna PROTOCOLO existe
+    col_protocolo = headers_lower.get("protocolo")
+    if not col_protocolo:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Coluna PROTOCOLO não encontrada. Colunas detectadas: {headers}"
+        )
+
+    total = 0
+    pendentes = 0
+    inseridos = 0
+    ja_existentes = 0
+    ignorados = 0
+    erros: list[str] = []
+
+    for i, row in enumerate(reader, start=2):
+        total += 1
+
+        # ── Filtrar apenas pendentes pela coluna SITUACAO ──────────────────
+        situacao_val = _col(row, headers_lower, "situacao").lower()
+        if situacao_val and situacao_val not in SITUACOES_PENDENTE:
+            ignorados += 1
+            continue
+
+        pendentes += 1
+
+        # ── Número do protocolo ────────────────────────────────────────────
+        num = _col(row, headers_lower, "numero_protocolo")
+        if not num:
+            erros.append(f"Linha {i}: coluna PROTOCOLO vazia, ignorado.")
+            continue
+
+        # ── Duplicata ──────────────────────────────────────────────────────
+        if db.query(models.Protocolo).filter(
+            models.Protocolo.numero_protocolo == num
+        ).first():
+            ja_existentes += 1
+            continue
+
+        # ── Data/hora ──────────────────────────────────────────────────────
+        dh_raw = _col(row, headers_lower, "datahora")
+        dh = parse_datahora(dh_raw) if dh_raw else None
+        if not dh:
+            if dh_raw:
+                erros.append(f"Linha {i}: data '{dh_raw}' não reconhecida, usando agora.")
+            dh = datetime.now()
+
+        # ── Tentar vincular Revenda cadastrada pelo nome ───────────────────
+        nome_revenda = _col(row, headers_lower, "revenda")
+        revenda_obj = None
+        if nome_revenda:
+            revenda_obj = db.query(models.Revenda).filter(
+                models.Revenda.nome.ilike(nome_revenda)
+            ).first()
+
+        # ── Criar Protocolo ────────────────────────────────────────────────
+        protocolo = models.Protocolo(
+            numero_protocolo = num,
+            datahora         = dh,
+            situacao         = _col(row, headers_lower, "situacao") or None,
+            revenda          = nome_revenda or None,
+            analista         = _col(row, headers_lower, "analista") or None,
+            problema         = _col(row, headers_lower, "problema") or None,
+            solucao          = _col(row, headers_lower, "solucao")  or None,
+            atendente        = _col(row, headers_lower, "atendente") or None,
+            atendimento_id   = _col(row, headers_lower, "atendimento_id") or None,
+            revenda_csv_id   = _col(row, headers_lower, "revenda_csv_id") or None,
+            tecnico_nome     = _col(row, headers_lower, "tecnico_nome") or None,
+            tipo             = _col(row, headers_lower, "tipo") or None,
+            cliente_id       = _col(row, headers_lower, "cliente_id") or None,
+            cnpj             = _col(row, headers_lower, "cnpj") or None,
+            avaliacao_revenda= _col(row, headers_lower, "avaliacao_revenda") or None,
+            resolvido        = _col(row, headers_lower, "resolvido") or None,
+            avaliado         = _col(row, headers_lower, "avaliado") or None,
+            numero_telefone  = _col(row, headers_lower, "numero_telefone") or None,
+            tecnico_revenda  = _col(row, headers_lower, "tecnico_revenda") or None,
+            modulo           = _col(row, headers_lower, "modulo") or None,
+            revenda_id       = revenda_obj.id if revenda_obj else None,
+        )
+        db.add(protocolo)
+        inseridos += 1
+
+    db.commit()
+
+    return schemas.ImportResult(
+        total_lidos=total,
+        pendentes_encontrados=pendentes,
+        novos_inseridos=inseridos,
+        ja_existentes=ja_existentes,
+        erros=erros,
+    )
+
+
+# ── Protocolo por ID — APÓS /importar ─────────────────────────────────────────
+
 @router.get("/protocolos/{protocolo_id}", response_model=schemas.ProtocoloOut)
 def obter_protocolo(protocolo_id: int, db: Session = Depends(get_db)):
     p = db.query(models.Protocolo).filter(models.Protocolo.id == protocolo_id).first()
@@ -139,95 +286,6 @@ def deletar_protocolo(protocolo_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Protocolo não encontrado.")
     db.delete(p)
     db.commit()
-
-
-# ── Import CSV ────────────────────────────────────────────────────────────────
-
-@router.post("/protocolos/importar", response_model=schemas.ImportResult)
-async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Envie um arquivo .csv")
-
-    conteudo = await file.read()
-
-    # Detectar encoding
-    for enc in ("utf-8-sig", "utf-8", "latin-1", "cp1252"):
-        try:
-            texto = conteudo.decode(enc)
-            break
-        except UnicodeDecodeError:
-            continue
-    else:
-        raise HTTPException(status_code=400, detail="Não foi possível decodificar o arquivo.")
-
-    # Detectar delimitador
-    amostra = texto[:2048]
-    delimitador = ";" if amostra.count(";") > amostra.count(",") else ","
-
-    reader = csv.DictReader(io.StringIO(texto), delimiter=delimitador)
-    headers = reader.fieldnames or []
-
-    col = {k: mapear_coluna(headers, v) for k, v in COLUNAS_ESPERADAS.items()}
-
-    total = 0
-    pendentes = 0
-    inseridos = 0
-    ja_existentes = 0
-    erros = []
-
-    for i, row in enumerate(reader, start=2):
-        total += 1
-
-        # Verificar coluna de status (se existir coluna "status")
-        status_col = mapear_coluna(headers, ["status", "situacao", "situação", "estado"])
-        if status_col:
-            status_val = (row.get(status_col) or "").strip().lower()
-            if status_val not in STATUS_PENDENTE:
-                continue
-
-        pendentes += 1
-
-        # Extrair número do protocolo
-        num = (row.get(col["protocolo"]) or "").strip() if col["protocolo"] else ""
-        if not num:
-            erros.append(f"Linha {i}: protocolo vazio, ignorado.")
-            continue
-
-        # Verificar duplicata
-        existente = db.query(models.Protocolo).filter(
-            models.Protocolo.numero_protocolo == num
-        ).first()
-        if existente:
-            ja_existentes += 1
-            continue
-
-        # Data/hora
-        dh_raw = (row.get(col["datahora"]) or "").strip() if col["datahora"] else ""
-        dh = parse_datahora(dh_raw) if dh_raw else datetime.now()
-        if not dh:
-            erros.append(f"Linha {i}: data '{dh_raw}' não reconhecida, usando agora.")
-            dh = datetime.now()
-
-        protocolo = models.Protocolo(
-            numero_protocolo=num,
-            datahora=dh,
-            revenda=(row.get(col["revenda"]) or "").strip() if col["revenda"] else None,
-            analista=(row.get(col["analista"]) or "").strip() if col["analista"] else None,
-            problema=(row.get(col["problema"]) or "").strip() if col["problema"] else None,
-            solucao=(row.get(col["solucao"]) or "").strip() if col["solucao"] else None,
-        )
-        db.add(protocolo)
-        inseridos += 1
-
-    db.commit()
-
-    return schemas.ImportResult(
-        total_lidos=total,
-        pendentes_encontrados=pendentes,
-        novos_inseridos=inseridos,
-        ja_existentes=ja_existentes,
-        erros=erros,
-    )
 
 
 # ── Stats ─────────────────────────────────────────────────────────────────────

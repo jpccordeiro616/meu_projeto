@@ -1,5 +1,10 @@
 /* ── CONFIG ───────────────────────────────────────────────────────────────── */
-const API = 'http://localhost:8000/api';
+// Quando o frontend é servido pelo próprio backend (porta 8000),
+// usamos URL relativa. Se abrir o HTML direto no navegador (file://),
+// cai no fallback para localhost:8000.
+const API = window.location.protocol === 'file:'
+  ? 'http://localhost:8000/api'
+  : '/api';
 
 /* ── STATE ────────────────────────────────────────────────────────────────── */
 let currentProtocolo = null;
@@ -415,14 +420,19 @@ async function deletarRevenda(id, nome) {
 
 /* ── HELPERS ──────────────────────────────────────────────────────────────── */
 async function fetchJSON(url, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  // Aplica Content-Type JSON em qualquer requisição com body que não seja FormData
   if (opts.body && !(opts.body instanceof FormData)) {
-    opts.headers = headers;
-  } else {
-    delete opts.headers;
+    opts.headers = {
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    };
   }
 
   const resp = await fetch(url, opts);
+
+  // DELETE retorna 204 sem body — não tenta parsear JSON
+  if (resp.status === 204) return null;
+
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(data.detail || `Erro ${resp.status}`);
   return data;

@@ -30,26 +30,40 @@ class RevendaOut(RevendaBase):
 # ── Protocolo ─────────────────────────────────────────────────────────────────
 
 class ProtocoloBase(BaseModel):
-    numero_protocolo: str
-    datahora: datetime
-    revenda: Optional[str] = None
-    analista: Optional[str] = None
-    problema: Optional[str] = None
-    solucao: Optional[str] = None
+    numero_protocolo:  str
+    datahora:          datetime
+    situacao:          Optional[str] = None
+    revenda:           Optional[str] = None
+    analista:          Optional[str] = None
+    problema:          Optional[str] = None
+    solucao:           Optional[str] = None
+    atendente:         Optional[str] = None
+    atendimento_id:    Optional[str] = None
+    revenda_csv_id:    Optional[str] = None
+    tecnico_nome:      Optional[str] = None
+    tipo:              Optional[str] = None
+    cliente_id:        Optional[str] = None
+    cnpj:              Optional[str] = None
+    avaliacao_revenda: Optional[str] = None
+    resolvido:         Optional[str] = None
+    avaliado:          Optional[str] = None
+    numero_telefone:   Optional[str] = None
+    tecnico_revenda:   Optional[str] = None
+    modulo:            Optional[str] = None
 
 
 class ProtocoloUpdate(BaseModel):
     observacao: Optional[str] = None
-    concluido: Optional[bool] = None
+    concluido:  Optional[bool] = None
 
 
 class ProtocoloOut(ProtocoloBase):
-    id: int
-    observacao: Optional[str] = None
-    concluido: bool
-    importado_em: datetime
+    id:            int
+    observacao:    Optional[str] = None
+    concluido:     bool
+    importado_em:  datetime
     atualizado_em: Optional[datetime] = None
-    revenda_rel: Optional[RevendaOut] = None
+    revenda_rel:   Optional[RevendaOut] = None
 
     class Config:
         from_attributes = True

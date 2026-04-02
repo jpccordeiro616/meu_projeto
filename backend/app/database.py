@@ -8,7 +8,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:Digisat123@localhost:5432/protocolos_db"
+    "postgresql://joaopedrocordeiro@localhost:5432/protocolos_db"
 )
 
 engine = create_engine(DATABASE_URL)
