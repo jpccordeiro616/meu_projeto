@@ -4,13 +4,32 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 
 from app.database import get_db
 from app import models, schemas
 
 router = APIRouter()
+
+# ── Usuários hardcoded ────────────────────────────────────────────────────────
+
+USUARIOS = {
+    "analista":   {"senha": "Digisat123", "perfil": "analista"},
+    "consultora": {"senha": "digisat",    "perfil": "leitura"},
+    "revenda":    {"senha": "revenda",    "perfil": "leitura"},
+}
+
+
+@router.post("/login")
+def login(data: dict):
+    login_str = (data.get("login") or "").strip().lower()
+    senha = (data.get("senha") or "").strip()
+    usuario = USUARIOS.get(login_str)
+    if not usuario or usuario["senha"] != senha:
+        raise HTTPException(status_code=401, detail="Login ou senha inválidos.")
+    return {"login": login_str, "perfil": usuario["perfil"]}
+
 
 # ── Mapeamento EXATO das colunas do CSV ──────────────────────────────────────
 #
@@ -114,8 +133,12 @@ def deletar_revenda(revenda_id: int, db: Session = Depends(get_db)):
 
 @router.get("/protocolos", response_model=list[schemas.ProtocoloOut])
 def listar_protocolos(
-    concluido: Optional[bool] = Query(None),
-    busca: Optional[str] = Query(None),
+    concluido:    Optional[bool] = Query(None),
+    busca:        Optional[str]  = Query(None),
+    mes:          Optional[int]  = Query(None),
+    ano:          Optional[int]  = Query(None),
+    data_inicio:  Optional[date] = Query(None),
+    data_fim:     Optional[date] = Query(None),
     db: Session = Depends(get_db),
 ):
     q = db.query(models.Protocolo)
@@ -129,7 +152,18 @@ def listar_protocolos(
             models.Protocolo.analista.ilike(termo) |
             models.Protocolo.problema.ilike(termo)
         )
-    return q.order_by(models.Protocolo.datahora.desc()).all()
+    if mes:
+        q = q.filter(db.query(models.Protocolo).whereclause is not None or True)
+        from sqlalchemy import extract
+        q = q.filter(extract('month', models.Protocolo.datahora) == mes)
+    if ano:
+        from sqlalchemy import extract
+        q = q.filter(extract('year', models.Protocolo.datahora) == ano)
+    if data_inicio:
+        q = q.filter(models.Protocolo.datahora >= datetime.combine(data_inicio, datetime.min.time()))
+    if data_fim:
+        q = q.filter(models.Protocolo.datahora <= datetime.combine(data_fim, datetime.max.time()))
+    return q.order_by(models.Protocolo.datahora.asc()).all()
 
 
 # ── Import CSV — DEVE ficar ANTES de /{protocolo_id} para não colidir ────────
@@ -292,13 +326,86 @@ def deletar_protocolo(protocolo_id: int, db: Session = Depends(get_db)):
 
 @router.get("/stats")
 def obter_stats(db: Session = Depends(get_db)):
-    total = db.query(models.Protocolo).count()
-    pendentes = db.query(models.Protocolo).filter(models.Protocolo.concluido == False).count()
+    from sqlalchemy import extract, func as sqlfunc, case
+    ano_atual = datetime.now().year
+
+    total      = db.query(models.Protocolo).count()
+    pendentes  = db.query(models.Protocolo).filter(models.Protocolo.concluido == False).count()
     concluidos = db.query(models.Protocolo).filter(models.Protocolo.concluido == True).count()
-    revendas = db.query(models.Revenda).count()
+    revendas   = db.query(models.Revenda).count()
+
+    # Gráfico pizza: Sim / Não do campo RESOLVIDO (somente os importados)
+    resolvido_dist = db.query(
+        models.Protocolo.resolvido,
+        sqlfunc.count(models.Protocolo.id).label('total')
+    ).group_by(models.Protocolo.resolvido).all()
+
+    # Agrupa: tudo que não é "Sim" vai para "Não"
+    contagem = {'Sim': 0, 'Não': 0}
+    for r in resolvido_dist:
+        label = (r.resolvido or '').strip()
+        if label == 'Sim':
+            contagem['Sim'] += r.total
+        else:
+            contagem['Não'] += r.total
+
+    grafico_resolvido = [
+        {"label": k, "total": v}
+        for k, v in contagem.items() if v > 0
+    ]
+
+    # % Concluídos por mês — usa case/when para contar True como 1
+    conc_mes = db.query(
+        extract('month', models.Protocolo.datahora).label('mes'),
+        sqlfunc.count(models.Protocolo.id).label('total'),
+        sqlfunc.sum(
+            case((models.Protocolo.concluido == True, 1), else_=0)
+        ).label('conc')
+    ).filter(
+        extract('year', models.Protocolo.datahora) == ano_atual
+    ).group_by(extract('month', models.Protocolo.datahora)
+    ).order_by(extract('month', models.Protocolo.datahora)).all()
+
+    grafico_conclusao = []
+    for row in conc_mes:
+        t = int(row.total or 0)
+        c = int(row.conc  or 0)
+        grafico_conclusao.append({
+            "mes":        int(row.mes),
+            "total":      t,
+            "concluidos": c,
+            "pct":        round(c / t * 100, 1) if t else 0,
+        })
+
+    # Pendentes por analista (campo ANALISTA do CSV)
+    por_analista = db.query(
+        models.Protocolo.analista,
+        sqlfunc.count(models.Protocolo.id).label('total')
+    ).filter(
+        models.Protocolo.concluido == False,
+        models.Protocolo.analista != None,
+        models.Protocolo.analista != ''
+    ).group_by(models.Protocolo.analista
+    ).order_by(sqlfunc.count(models.Protocolo.id).desc()).limit(10).all()
+
+    # Pendentes por revenda
+    por_revenda = db.query(
+        models.Protocolo.revenda,
+        sqlfunc.count(models.Protocolo.id).label('total')
+    ).filter(
+        models.Protocolo.concluido == False,
+        models.Protocolo.revenda != None,
+        models.Protocolo.revenda != ''
+    ).group_by(models.Protocolo.revenda
+    ).order_by(sqlfunc.count(models.Protocolo.id).desc()).limit(10).all()
+
     return {
-        "total_protocolos": total,
-        "pendentes": pendentes,
-        "concluidos": concluidos,
+        "total_protocolos":     total,
+        "pendentes":            pendentes,
+        "concluidos":           concluidos,
         "revendas_cadastradas": revendas,
+        "grafico_resolvido":    grafico_resolvido,
+        "grafico_conclusao":    grafico_conclusao,
+        "por_analista":         [{"nome": r.analista, "total": r.total} for r in por_analista],
+        "por_revenda":          [{"nome": r.revenda,   "total": r.total} for r in por_revenda],
     }

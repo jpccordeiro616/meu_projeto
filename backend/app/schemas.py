@@ -53,17 +53,19 @@ class ProtocoloBase(BaseModel):
 
 
 class ProtocoloUpdate(BaseModel):
-    observacao: Optional[str] = None
-    concluido:  Optional[bool] = None
+    observacao:         Optional[str] = None
+    concluido:          Optional[bool] = None
+    contato_realizado:  Optional[bool] = None
 
 
 class ProtocoloOut(ProtocoloBase):
-    id:            int
-    observacao:    Optional[str] = None
-    concluido:     bool
-    importado_em:  datetime
-    atualizado_em: Optional[datetime] = None
-    revenda_rel:   Optional[RevendaOut] = None
+    id:                 int
+    observacao:         Optional[str] = None
+    concluido:          bool
+    contato_realizado:  bool
+    importado_em:       datetime
+    atualizado_em:      Optional[datetime] = None
+    revenda_rel:        Optional[RevendaOut] = None
 
     class Config:
         from_attributes = True

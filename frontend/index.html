@@ -7,51 +7,63 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<!-- ── SIDEBAR ─────────────────────────────────────────────────────────────── -->
+<!-- LOGIN -->
+<div id="telaLogin" class="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-icon">⬡</span>
+      <span class="login-titulo">Proto<strong>Cotrol</strong></span>
+    </div>
+    <div class="login-sub">Sistema de Controle de Protocolos</div>
+    <div class="field-group">
+      <label class="field-label">Login</label>
+      <input type="text" class="field-input" id="loginInput" placeholder="seu login" autocomplete="username" />
+    </div>
+    <div class="field-group">
+      <label class="field-label">Senha</label>
+      <input type="password" class="field-input" id="senhaInput" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <div class="login-erro hidden" id="loginErro">Login ou senha inválidos.</div>
+    <button class="btn btn-primary login-btn" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appWrapper" class="hidden">
 <aside class="sidebar">
   <div class="sidebar-logo">
     <span class="logo-icon">⬡</span>
-    <span class="logo-text">Proto<strong>Control</strong></span>
+    <span class="logo-text">Proto<strong>Cotrol</strong></span>
   </div>
-
   <nav class="sidebar-nav">
-    <button class="nav-item active" data-page="dashboard">
-      <span class="nav-icon">▦</span> Dashboard
-    </button>
-    <button class="nav-item" data-page="protocolos">
-      <span class="nav-icon">≡</span> Protocolos
-    </button>
-    <button class="nav-item" data-page="importar">
-      <span class="nav-icon">↑</span> Importar CSV
-    </button>
-    <button class="nav-item" data-page="revendas">
-      <span class="nav-icon">◈</span> Revendas
-    </button>
+    <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span> Dashboard</button>
+    <button class="nav-item" data-page="protocolos"><span class="nav-icon">≡</span> Protocolos</button>
+    <button class="nav-item nav-analista" data-page="importar"><span class="nav-icon">↑</span> Importar CSV</button>
+    <button class="nav-item nav-analista" data-page="revendas"><span class="nav-icon">◈</span> Revendas</button>
   </nav>
-
   <div class="sidebar-footer">
-    <span class="api-status" id="apiStatus">
-      <span class="status-dot"></span> Conectando...
-    </span>
+    <div class="usuario-info" id="usuarioInfo"></div>
+    <img
+    src="https://www.digisat.com.br/static/img/Logo%20branca.png"
+    alt="Logo Digisat"
+    class="sidebar-footer-logo"
+  />
+    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
   </div>
 </aside>
 
-<!-- ── MAIN ────────────────────────────────────────────────────────────────── -->
 <main class="main">
-
-  <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-title" id="topbarTitle">Dashboard</div>
-    <div class="topbar-actions">
-      <span class="topbar-time" id="topbarTime"></span>
-    </div>
+    <div class="topbar-actions"><span class="topbar-time" id="topbarTime"></span></div>
   </header>
 
-  <!-- PAGE: DASHBOARD -->
+  <!-- DASHBOARD -->
   <section class="page active" id="page-dashboard">
     <div class="stats-grid">
       <div class="stat-card accent">
@@ -75,28 +87,23 @@
         <div class="stat-sub">cadastradas</div>
       </div>
     </div>
-
-    <div class="section-title">Pendentes recentes</div>
-    <div class="table-wrap">
-      <table class="data-table" id="dashTable">
-        <thead>
-          <tr>
-            <th>Protocolo</th>
-            <th>Data/Hora</th>
-            <th>Revenda</th>
-            <th>Analista</th>
-            <th>Problema</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="dashTableBody">
-          <tr><td colspan="6" class="empty">Carregando...</td></tr>
-        </tbody>
-      </table>
+    <div class="charts-grid">
+      <div class="chart-card chart-pizza">
+        <div class="chart-title">% Resolvidos</div>
+        <canvas id="chartConclusao"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Pendentes por Analista</div>
+        <canvas id="chartTecnico"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Pendentes por Revenda</div>
+        <canvas id="chartRevenda"></canvas>
+      </div>
     </div>
   </section>
 
-  <!-- PAGE: PROTOCOLOS -->
+  <!-- PROTOCOLOS -->
   <section class="page" id="page-protocolos">
     <div class="toolbar">
       <input type="text" class="search-input" id="searchInput" placeholder="Buscar protocolo, revenda, analista..." />
@@ -106,68 +113,65 @@
         <button class="filter-tab" data-filter="">Todos</button>
       </div>
     </div>
-
+    <div class="toolbar" style="margin-top:-10px">
+      <div class="date-filters">
+        <select class="field-input select-sm" id="filtroMes">
+          <option value="">Todos os meses</option>
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+          <option value="3">Março</option><option value="4">Abril</option>
+          <option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option>
+          <option value="9">Setembro</option><option value="10">Outubro</option>
+          <option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+        <input type="date" class="field-input select-sm" id="filtroInicio" />
+        <input type="date" class="field-input select-sm" id="filtroFim" />
+        <button class="btn btn-ghost" onclick="limparFiltrosData()">Limpar</button>
+      </div>
+    </div>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Protocolo</th>
-            <th>Data/Hora</th>
-            <th>Revenda</th>
-            <th>Analista</th>
-            <th>Problema</th>
-            <th>Status</th>
-            <th></th>
+            <th>Protocolo</th><th>Data/Hora</th><th>Revenda</th><th>Técnico</th>
+            <th>Problema</th><th>Contato</th><th>Status</th><th></th>
           </tr>
         </thead>
-        <tbody id="protTableBody">
-          <tr><td colspan="7" class="empty">Carregando...</td></tr>
-        </tbody>
+        <tbody id="protTableBody"><tr><td colspan="8" class="empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </section>
 
-  <!-- PAGE: IMPORTAR -->
+  <!-- IMPORTAR -->
   <section class="page" id="page-importar">
     <div class="import-area" id="importArea">
       <div class="import-icon">↑</div>
       <div class="import-label">Arraste o CSV aqui ou clique para selecionar</div>
-      <div class="import-sub">Colunas esperadas: protocolo, datahora, revenda, analista, problema, solução</div>
       <input type="file" id="fileInput" accept=".csv" hidden />
       <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Selecionar arquivo</button>
     </div>
-
     <div class="import-result hidden" id="importResult"></div>
   </section>
 
-  <!-- PAGE: REVENDAS -->
+  <!-- REVENDAS -->
   <section class="page" id="page-revendas">
     <div class="toolbar">
       <span></span>
       <button class="btn btn-primary" id="btnNovaRevenda">+ Nova Revenda</button>
     </div>
-
     <div class="table-wrap">
       <table class="data-table">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>Nome da Revenda</th>
-            <th>Telefone / WhatsApp</th>
-            <th>Cadastrado em</th>
-            <th></th>
-          </tr>
+          <tr><th>#</th><th>Nome da Revenda</th><th>Telefone / WhatsApp</th><th>Cadastrado em</th><th></th></tr>
         </thead>
-        <tbody id="revTableBody">
-          <tr><td colspan="5" class="empty">Carregando...</td></tr>
-        </tbody>
+        <tbody id="revTableBody"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </section>
-
 </main>
+</div>
 
-<!-- ── MODAL PROTOCOLO ─────────────────────────────────────────────────────── -->
+<!-- MODAL PROTOCOLO -->
 <div class="modal-overlay hidden" id="modalProtocolo">
   <div class="modal">
     <div class="modal-header">
@@ -188,6 +192,10 @@
           <div class="info-label">Analista</div>
           <div class="info-value" id="modalAnalista"></div>
         </div>
+        <div class="info-item">
+          <div class="info-label">Técnico</div>
+          <div class="info-value" id="modalTecnico"></div>
+        </div>
         <div class="info-item full">
           <div class="info-label">Problema</div>
           <div class="info-value" id="modalProblema"></div>
@@ -197,33 +205,41 @@
           <div class="info-value" id="modalSolucao"></div>
         </div>
       </div>
-
       <div class="field-group">
         <label class="field-label">Observação</label>
         <textarea class="field-input" id="modalObs" rows="3" placeholder="Adicionar observação..."></textarea>
       </div>
-
-      <div class="field-group">
-        <label class="field-label">Status</label>
-        <div class="toggle-row">
-          <label class="toggle">
-            <input type="checkbox" id="modalConcluido" />
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label" id="toggleLabel">Pendente</span>
+      <div class="two-toggles">
+        <div class="field-group">
+          <label class="field-label">Contato realizado</label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="modalContato" />
+              <span class="toggle-slider toggle-blue"></span>
+            </label>
+            <span class="toggle-label" id="toggleContatoLabel">Não</span>
+          </div>
+        </div>
+        <div class="field-group modal-analista-only">
+          <label class="field-label">Status</label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="modalConcluido" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label" id="toggleLabel">Pendente</span>
+          </div>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="gerarMensagemWhatsApp()">
-        <span>📱</span> WhatsApp
-      </button>
-      <button class="btn btn-primary" onclick="salvarProtocolo()">Salvar</button>
+      <button class="btn btn-ghost" onclick="gerarMensagemWhatsApp()">📱 WhatsApp</button>
+      <button class="btn btn-primary modal-analista-only" onclick="salvarProtocolo()">Salvar</button>
     </div>
   </div>
 </div>
 
-<!-- ── MODAL REVENDA ───────────────────────────────────────────────────────── -->
+<!-- MODAL REVENDA -->
 <div class="modal-overlay hidden" id="modalRevenda">
   <div class="modal modal-sm">
     <div class="modal-header">
@@ -248,9 +264,7 @@
   </div>
 </div>
 
-<!-- ── TOAST ───────────────────────────────────────────────────────────────── -->
 <div class="toast hidden" id="toast"></div>
-
-<script src="script.js"></script>
+<script src="script.js?v=4"></script>
 </body>
 </html>

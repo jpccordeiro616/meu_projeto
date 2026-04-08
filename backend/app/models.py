@@ -45,6 +45,7 @@ class Protocolo(Base):
     # ── Campos de controle interno ─────────────────────────────────────────────
     observacao          = Column(Text, nullable=True)
     concluido           = Column(Boolean, default=False)
+    contato_realizado   = Column(Boolean, default=False)
     importado_em        = Column(DateTime(timezone=True), server_default=func.now())
     atualizado_em       = Column(DateTime(timezone=True), onupdate=func.now())
 
