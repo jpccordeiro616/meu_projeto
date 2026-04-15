@@ -7,9 +7,10 @@ from app.database import Base
 class Revenda(Base):
     __tablename__ = "revendas"
 
-    id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String(200), nullable=False, unique=True)
-    telefone = Column(String(20), nullable=False)
+    id        = Column(Integer, primary_key=True, index=True)
+    nome      = Column(String(200), nullable=False, unique=True)
+    cnpj      = Column(String(30), nullable=True)
+    telefone  = Column(String(20), nullable=False)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
     protocolos = relationship("Protocolo", back_populates="revenda_rel")

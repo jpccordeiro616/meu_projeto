@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 import csv
 import io
@@ -32,12 +32,6 @@ def login(data: dict):
 
 
 # ── Mapeamento EXATO das colunas do CSV ──────────────────────────────────────
-#
-#  PROTOCOLO|DATAHORA|SITUACAO|REVENDA|ANALISTA|PROBLEMA|SOLUCAO|ATENDENTE|
-#  ATENDIMENTOID|REVENDAID|USUARIOANALISTAID|ATENDIMENTOPROBLEMAID|SITUACAOID|
-#  USUARIOATENDENTEID|ATENDIMENTOSOLUCAOID|TECNICONOME|TIPO|CLIENTEID|CNPJ|
-#  AVALIACAOREVENDA|RESOLVIDO|AVALIADO|NUMEROTELEFONE|TECNICOREVENDA|MODULO
-
 CSV_COLUNAS = {
     "numero_protocolo": "PROTOCOLO",
     "datahora":         "DATAHORA",
@@ -59,17 +53,29 @@ CSV_COLUNAS = {
     "numero_telefone":  "NUMEROTELEFONE",
     "tecnico_revenda":  "TECNICOREVENDA",
     "modulo":           "MODULO",
+    # Novos campos de telefone da revenda
+    "revcelular":       "REVCELULAR",
+    "revtelefone":      "REVTELEFONE",
 }
 
-# Valores da coluna SITUACAO considerados pendentes
 SITUACOES_PENDENTE = {"pendente", "aberto", "em aberto", "aguardando", "em andamento", "open", "1"}
 
 
 def _col(row: dict, headers_lower: dict, campo: str) -> str:
-    """Retorna o valor de uma coluna pelo nome (case-insensitive), ou ''."""
     nome_csv = CSV_COLUNAS.get(campo, "")
     chave = headers_lower.get(nome_csv.lower(), nome_csv)
     return (row.get(chave) or "").strip()
+
+
+def _telefone_revenda(row: dict, headers_lower: dict) -> str:
+    """Pega REVCELULAR; se vazio, usa REVTELEFONE; se vazio, usa NUMEROTELEFONE."""
+    cel = _col(row, headers_lower, "revcelular")
+    if cel:
+        return cel
+    tel = _col(row, headers_lower, "revtelefone")
+    if tel:
+        return tel
+    return _col(row, headers_lower, "numero_telefone")
 
 
 def parse_datahora(valor: str) -> Optional[datetime]:
@@ -90,8 +96,15 @@ def parse_datahora(valor: str) -> Optional[datetime]:
 # ── Revendas ──────────────────────────────────────────────────────────────────
 
 @router.get("/revendas", response_model=list[schemas.RevendaOut])
-def listar_revendas(db: Session = Depends(get_db)):
-    return db.query(models.Revenda).order_by(models.Revenda.nome).all()
+def listar_revendas(busca: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    q = db.query(models.Revenda)
+    if busca:
+        termo = f"%{busca}%"
+        q = q.filter(
+            models.Revenda.nome.ilike(termo) |
+            models.Revenda.cnpj.ilike(termo)
+        )
+    return q.order_by(models.Revenda.nome).all()
 
 
 @router.post("/revendas", response_model=schemas.RevendaOut, status_code=201)
@@ -141,7 +154,7 @@ def listar_protocolos(
     data_fim:     Optional[date] = Query(None),
     db: Session = Depends(get_db),
 ):
-    q = db.query(models.Protocolo)
+    q = db.query(models.Protocolo).options(joinedload(models.Protocolo.revenda_rel))
     if concluido is not None:
         q = q.filter(models.Protocolo.concluido == concluido)
     if busca:
@@ -153,7 +166,6 @@ def listar_protocolos(
             models.Protocolo.problema.ilike(termo)
         )
     if mes:
-        q = q.filter(db.query(models.Protocolo).whereclause is not None or True)
         from sqlalchemy import extract
         q = q.filter(extract('month', models.Protocolo.datahora) == mes)
     if ano:
@@ -166,7 +178,7 @@ def listar_protocolos(
     return q.order_by(models.Protocolo.datahora.asc()).all()
 
 
-# ── Import CSV — DEVE ficar ANTES de /{protocolo_id} para não colidir ────────
+# ── Import CSV ────────────────────────────────────────────────────────────────
 
 @router.post("/protocolos/importar", response_model=schemas.ImportResult)
 async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -175,7 +187,6 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
 
     conteudo = await file.read()
 
-    # Detectar encoding
     texto = None
     for enc in ("utf-8-sig", "utf-8", "latin-1", "cp1252"):
         try:
@@ -186,18 +197,14 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
     if texto is None:
         raise HTTPException(status_code=400, detail="Não foi possível decodificar o arquivo.")
 
-    # Detectar delimitador: prioriza | (formato do sistema), depois ; e ,
     amostra = texto[:4096]
     contagens = {"|": amostra.count("|"), ";": amostra.count(";"), ",": amostra.count(",")}
     delimitador = max(contagens, key=contagens.get)
 
     reader = csv.DictReader(io.StringIO(texto), delimiter=delimitador)
     headers = list(reader.fieldnames or [])
-
-    # Mapa de header em minúsculo → header original (para busca case-insensitive)
     headers_lower = {h.strip().lower(): h.strip() for h in headers}
 
-    # Verificar se a coluna PROTOCOLO existe
     col_protocolo = headers_lower.get("protocolo")
     if not col_protocolo:
         raise HTTPException(
@@ -215,7 +222,6 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
     for i, row in enumerate(reader, start=2):
         total += 1
 
-        # ── Filtrar: ignora registros onde RESOLVIDO = "Sim" ──────────────
         resolvido_val = _col(row, headers_lower, "resolvido").strip().lower()
         if resolvido_val == "sim":
             ignorados += 1
@@ -223,20 +229,17 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
 
         pendentes += 1
 
-        # ── Número do protocolo ────────────────────────────────────────────
         num = _col(row, headers_lower, "numero_protocolo")
         if not num:
             erros.append(f"Linha {i}: coluna PROTOCOLO vazia, ignorado.")
             continue
 
-        # ── Duplicata ──────────────────────────────────────────────────────
         if db.query(models.Protocolo).filter(
             models.Protocolo.numero_protocolo == num
         ).first():
             ja_existentes += 1
             continue
 
-        # ── Data/hora ──────────────────────────────────────────────────────
         dh_raw = _col(row, headers_lower, "datahora")
         dh = parse_datahora(dh_raw) if dh_raw else None
         if not dh:
@@ -244,15 +247,26 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
                 erros.append(f"Linha {i}: data '{dh_raw}' não reconhecida, usando agora.")
             dh = datetime.now()
 
-        # ── Tentar vincular Revenda cadastrada pelo nome ───────────────────
         nome_revenda = _col(row, headers_lower, "revenda")
         revenda_obj = None
         if nome_revenda:
             revenda_obj = db.query(models.Revenda).filter(
                 models.Revenda.nome.ilike(nome_revenda)
             ).first()
+            # Cria automaticamente se não existir
+            if not revenda_obj:
+                telefone_rev = _telefone_revenda(row, headers_lower)
+                if telefone_rev:
+                    revenda_obj = models.Revenda(
+                        nome=nome_revenda,
+                        telefone=telefone_rev
+                    )
+                    db.add(revenda_obj)
+                    db.flush()  # gera o ID sem commitar
 
-        # ── Criar Protocolo ────────────────────────────────────────────────
+        # Telefone: REVCELULAR → REVTELEFONE → NUMEROTELEFONE
+        telefone = _telefone_revenda(row, headers_lower)
+
         protocolo = models.Protocolo(
             numero_protocolo = num,
             datahora         = dh,
@@ -271,7 +285,7 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
             avaliacao_revenda= _col(row, headers_lower, "avaliacao_revenda") or None,
             resolvido        = _col(row, headers_lower, "resolvido") or None,
             avaliado         = _col(row, headers_lower, "avaliado") or None,
-            numero_telefone  = _col(row, headers_lower, "numero_telefone") or None,
+            numero_telefone  = telefone or None,
             tecnico_revenda  = _col(row, headers_lower, "tecnico_revenda") or None,
             modulo           = _col(row, headers_lower, "modulo") or None,
             revenda_id       = revenda_obj.id if revenda_obj else None,
@@ -290,11 +304,11 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
     )
 
 
-# ── Protocolo por ID — APÓS /importar ─────────────────────────────────────────
+# ── Protocolo por ID ─────────────────────────────────────────────────────────
 
 @router.get("/protocolos/{protocolo_id}", response_model=schemas.ProtocoloOut)
 def obter_protocolo(protocolo_id: int, db: Session = Depends(get_db)):
-    p = db.query(models.Protocolo).filter(models.Protocolo.id == protocolo_id).first()
+    p = db.query(models.Protocolo).options(joinedload(models.Protocolo.revenda_rel)).filter(models.Protocolo.id == protocolo_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Protocolo não encontrado.")
     return p
@@ -325,22 +339,25 @@ def deletar_protocolo(protocolo_id: int, db: Session = Depends(get_db)):
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 @router.get("/stats")
-def obter_stats(db: Session = Depends(get_db)):
+def obter_stats(mes: Optional[int] = Query(None), db: Session = Depends(get_db)):
     from sqlalchemy import extract, func as sqlfunc, case
     ano_atual = datetime.now().year
 
-    total      = db.query(models.Protocolo).count()
-    pendentes  = db.query(models.Protocolo).filter(models.Protocolo.concluido == False).count()
-    concluidos = db.query(models.Protocolo).filter(models.Protocolo.concluido == True).count()
+    # Filtro base por mês se fornecido
+    q_base = db.query(models.Protocolo)
+    if mes:
+        q_base = q_base.filter(extract('month', models.Protocolo.datahora) == mes)
+
+    total      = q_base.count()
+    pendentes  = q_base.filter(models.Protocolo.concluido == False).count()
+    concluidos = q_base.filter(models.Protocolo.concluido == True).count()
     revendas   = db.query(models.Revenda).count()
 
-    # Gráfico pizza: Sim / Não do campo RESOLVIDO (somente os importados)
     resolvido_dist = db.query(
         models.Protocolo.resolvido,
         sqlfunc.count(models.Protocolo.id).label('total')
     ).group_by(models.Protocolo.resolvido).all()
 
-    # Agrupa: tudo que não é "Sim" vai para "Não"
     contagem = {'Sim': 0, 'Não': 0}
     for r in resolvido_dist:
         label = (r.resolvido or '').strip()
@@ -354,7 +371,6 @@ def obter_stats(db: Session = Depends(get_db)):
         for k, v in contagem.items() if v > 0
     ]
 
-    # % Concluídos por mês — usa case/when para contar True como 1
     conc_mes = db.query(
         extract('month', models.Protocolo.datahora).label('mes'),
         sqlfunc.count(models.Protocolo.id).label('total'),
@@ -377,26 +393,28 @@ def obter_stats(db: Session = Depends(get_db)):
             "pct":        round(c / t * 100, 1) if t else 0,
         })
 
-    # Pendentes por analista (campo ANALISTA do CSV)
     por_analista = db.query(
         models.Protocolo.analista,
         sqlfunc.count(models.Protocolo.id).label('total')
     ).filter(
-        models.Protocolo.concluido == False,
         models.Protocolo.analista != None,
         models.Protocolo.analista != ''
-    ).group_by(models.Protocolo.analista
-    ).order_by(sqlfunc.count(models.Protocolo.id).desc()).limit(10).all()
+    )
+    if mes:
+        por_analista = por_analista.filter(extract('month', models.Protocolo.datahora) == mes)
+    por_analista = por_analista.group_by(models.Protocolo.analista
+    ).order_by(sqlfunc.count(models.Protocolo.id).desc()).all()
 
-    # Pendentes por revenda
     por_revenda = db.query(
         models.Protocolo.revenda,
         sqlfunc.count(models.Protocolo.id).label('total')
     ).filter(
-        models.Protocolo.concluido == False,
         models.Protocolo.revenda != None,
         models.Protocolo.revenda != ''
-    ).group_by(models.Protocolo.revenda
+    )
+    if mes:
+        por_revenda = por_revenda.filter(extract('month', models.Protocolo.datahora) == mes)
+    por_revenda = por_revenda.group_by(models.Protocolo.revenda
     ).order_by(sqlfunc.count(models.Protocolo.id).desc()).limit(10).all()
 
     return {

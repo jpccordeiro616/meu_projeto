@@ -6,7 +6,8 @@ from datetime import datetime
 # ── Revenda ──────────────────────────────────────────────────────────────────
 
 class RevendaBase(BaseModel):
-    nome: str
+    nome:     str
+    cnpj:     Optional[str] = None
     telefone: str
 
 
@@ -15,12 +16,13 @@ class RevendaCreate(RevendaBase):
 
 
 class RevendaUpdate(BaseModel):
-    nome: Optional[str] = None
+    nome:     Optional[str] = None
+    cnpj:     Optional[str] = None
     telefone: Optional[str] = None
 
 
 class RevendaOut(RevendaBase):
-    id: int
+    id:        int
     criado_em: datetime
 
     class Config:

@@ -140,6 +140,14 @@ function configurarEventos() {
   document.getElementById('filtroInicio').addEventListener('change', () => carregarProtocolos());
   document.getElementById('filtroFim').addEventListener('change', () => carregarProtocolos());
 
+  document.getElementById('dashFiltroMes')?.addEventListener('change', () => carregarDashboard());
+
+  let searchRevendaDebounce = null;
+  document.getElementById('searchRevenda')?.addEventListener('input', e => {
+    clearTimeout(searchRevendaDebounce);
+    searchRevendaDebounce = setTimeout(() => carregarRevendas(e.target.value), 350);
+  });
+
   document.getElementById('modalConcluido').addEventListener('change', function () {
     document.getElementById('toggleLabel').textContent = this.checked ? 'Concluído' : 'Pendente';
   });
@@ -188,12 +196,13 @@ function limparFiltrosData() {
 /* ── DASHBOARD ────────────────────────────────────────────────────────────── */
 async function carregarDashboard() {
   try {
-    const stats = await fetchJSON(`${API}/stats`);
+    const mes = document.getElementById('dashFiltroMes')?.value || '';
+    const url = mes ? `${API}/stats?mes=${mes}` : `${API}/stats`;
+    const stats = await fetchJSON(url);
     document.getElementById('statPendentes').textContent  = stats.pendentes;
     document.getElementById('statConcluidos').textContent = stats.concluidos;
     document.getElementById('statTotal').textContent      = stats.total_protocolos;
     document.getElementById('statRevendas').textContent   = stats.revendas_cadastradas;
-
     renderizarGraficos(stats);
   } catch {
     mostrarToast('Erro ao carregar dashboard', 'error');
@@ -259,7 +268,7 @@ function renderizarGraficos(stats) {
     options: {
       indexAxis: 'y',
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
         x: { beginAtZero: true, grid: { color: '#1e2430' }, ticks: { precision: 0 } },
@@ -286,7 +295,7 @@ function renderizarGraficos(stats) {
     options: {
       indexAxis: 'y',
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
         x: { beginAtZero: true, grid: { color: '#1e2430' }, ticks: { precision: 0 } },
@@ -326,22 +335,21 @@ async function carregarProtocolos() {
       <tr>
         <td><span class="cell-mono">${p.numero_protocolo}</span></td>
         <td>${formatarData(p.datahora)}</td>
-        <td>${p.revenda || '—'}</td>
-        <td>${p.tecnico_nome || p.analista || '—'}</td>
-        <td><span class="cell-truncate" title="${p.problema || ''}">${p.problema || '—'}</span></td>
-        <td>
+        <td title="${p.revenda || ''}">${p.revenda || '—'}</td>
+        <td title="${p.tecnico_nome || p.analista || ''}">${p.tecnico_nome || p.analista || '—'}</td>
+        <td title="${p.problema || ''}">${p.problema || '—'}</td>
+        <td style="text-align:center">
           <span class="badge ${p.contato_realizado ? 'badge-contato' : 'badge-semcontato'}">
             ${p.contato_realizado ? 'Sim' : 'Não'}
           </span>
         </td>
-        <td>
+        <td style="text-align:center">
           <span class="badge ${p.concluido ? 'badge-done' : 'badge-pending'}">
             ${p.concluido ? 'Concluído' : 'Pendente'}
           </span>
         </td>
-        <td style="display:flex;gap:6px">
+        <td style="text-align:center">
           <button class="btn btn-icon" onclick="abrirProtocolo(${p.id})">Abrir →</button>
-          ${perfil === 'analista' ? `<button class="btn btn-icon btn-danger" onclick="deletarProtocolo(${p.id}, '${escapar(p.numero_protocolo)}')">✕</button>` : ''}
         </td>
       </tr>
     `).join('');
@@ -407,6 +415,12 @@ async function salvarProtocolo() {
   }
 }
 
+async function deletarDoModal() {
+  if (!currentProtocolo || perfil !== 'analista') return;
+  fecharModal('modalProtocolo');
+  await deletarProtocolo(currentProtocolo.id, currentProtocolo.numero_protocolo);
+}
+
 async function deletarProtocolo(id, numero) {
   if (perfil !== 'analista') return;
   if (!confirm(`Deletar o protocolo ${numero}? Esta ação não pode ser desfeita.`)) return;
@@ -441,10 +455,17 @@ function gerarMensagemWhatsApp() {
     `Gostaria de verificar se o problema foi solucionado ou se ainda precisam de auxilio.`;
 
   const telefone   = currentProtocolo.revenda_rel?.telefone || currentProtocolo.numero_telefone || '';
-  const numeroLimpo = telefone.replace(/\D/g, '');
+  let numeroLimpo  = telefone.replace(/\D/g, '');
+  if (numeroLimpo && !numeroLimpo.startsWith('55')) {
+    numeroLimpo = '55' + numeroLimpo;
+  }
 
-  const url = `https://wa.me/${numeroLimpo}?text=${encodeURIComponent(mensagem)}`;
-  window.open(url, '_blank');
+  const textoCodificado = encodeURIComponent(mensagem);
+  const urlApp = numeroLimpo
+    ? `whatsapp://send?phone=${numeroLimpo}&text=${textoCodificado}`
+    : `whatsapp://send?text=${textoCodificado}`;
+
+  window.location.href = urlApp;
 }
 
 /* ── IMPORTAR CSV ─────────────────────────────────────────────────────────── */
@@ -481,34 +502,41 @@ async function importarCSV(arquivo) {
 }
 
 /* ── REVENDAS ─────────────────────────────────────────────────────────────── */
-async function carregarRevendas() {
+async function carregarRevendas(busca = '') {
   const tbody = document.getElementById('revTableBody');
   try {
-    const lista = await fetchJSON(`${API}/revendas`);
+    const url = busca ? `${API}/revendas?busca=${encodeURIComponent(busca)}` : `${API}/revendas`;
+    const lista = await fetchJSON(url);
     if (!lista.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhuma revenda cadastrada.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhuma revenda encontrada.</td></tr>`;
       return;
     }
-    tbody.innerHTML = lista.map(r => `
+    tbody.innerHTML = lista.map(r => {
+      const tel = r.telefone.replace(/\D/g, '');
+      const telWpp = tel && !tel.startsWith('55') ? '55' + tel : tel;
+      return `
       <tr>
         <td><span class="cell-mono">#${r.id}</span></td>
         <td>${r.nome}</td>
-        <td><a href="https://wa.me/${r.telefone.replace(/\D/g,'')}" target="_blank" style="color:var(--success)">${r.telefone}</a></td>
+        <td>${r.cnpj || '—'}</td>
+        <td>${r.telefone}</td>
         <td>${formatarData(r.criado_em)}</td>
         <td style="display:flex;gap:6px">
-          <button class="btn btn-icon" onclick="editarRevenda(${r.id}, '${escapar(r.nome)}', '${r.telefone}')">Editar</button>
+          ${telWpp ? `<a href="whatsapp://send?phone=${telWpp}" class="btn btn-icon" style="color:var(--success);border-color:#22c55e44;text-decoration:none" title="Abrir WhatsApp">📱</a>` : ''}
+          <button class="btn btn-icon" onclick="editarRevenda(${r.id}, '${escapar(r.nome)}', '${escapar(r.cnpj || '')}', '${r.telefone}')">Editar</button>
           <button class="btn btn-icon btn-danger" onclick="deletarRevenda(${r.id}, '${escapar(r.nome)}')">✕</button>
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   } catch {
     mostrarToast('Erro ao carregar revendas', 'error');
   }
 }
 
-function editarRevenda(id, nome, telefone) {
+function editarRevenda(id, nome, cnpj, telefone) {
   document.getElementById('revendaEditId').value   = id;
   document.getElementById('revendaNome').value     = nome;
+  document.getElementById('revendaCnpj').value     = cnpj;
   document.getElementById('revendaTelefone').value = telefone;
   document.getElementById('modalRevendaTitulo').textContent = 'Editar Revenda';
   abrirModal('modalRevenda');
@@ -517,20 +545,21 @@ function editarRevenda(id, nome, telefone) {
 async function salvarRevenda() {
   const id       = document.getElementById('revendaEditId').value;
   const nome     = document.getElementById('revendaNome').value.trim();
+  const cnpj     = document.getElementById('revendaCnpj').value.trim();
   const telefone = document.getElementById('revendaTelefone').value.trim();
 
   if (!nome || !telefone) { mostrarToast('Preencha nome e telefone', 'error'); return; }
 
   try {
     if (id) {
-      await fetchJSON(`${API}/revendas/${id}`, { method: 'PUT', body: JSON.stringify({ nome, telefone }) });
+      await fetchJSON(`${API}/revendas/${id}`, { method: 'PUT', body: JSON.stringify({ nome, cnpj, telefone }) });
       mostrarToast('Revenda atualizada!', 'success');
     } else {
-      await fetchJSON(`${API}/revendas`, { method: 'POST', body: JSON.stringify({ nome, telefone }) });
+      await fetchJSON(`${API}/revendas`, { method: 'POST', body: JSON.stringify({ nome, cnpj, telefone }) });
       mostrarToast('Revenda cadastrada!', 'success');
     }
     fecharModal('modalRevenda');
-    carregarRevendas();
+    carregarRevendas(document.getElementById('searchRevenda')?.value || '');
   } catch (e) {
     mostrarToast(e.message || 'Erro ao salvar revenda', 'error');
   }

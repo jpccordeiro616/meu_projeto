@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Protocolos · Painel de Controle</title>
+  <link rel="icon" type="image/png" href="https://novosite.ddns.digisat.com.br/static/master/imagens/favicon/d.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -17,7 +18,7 @@
   <div class="login-box">
     <div class="login-logo">
       <span class="logo-icon">⬡</span>
-      <span class="login-titulo">Proto<strong>Cotrol</strong></span>
+      <span class="login-titulo">Proto<strong>Control</strong></span>
     </div>
     <div class="login-sub">Sistema de Controle de Protocolos</div>
     <div class="field-group">
@@ -38,7 +39,7 @@
 <aside class="sidebar">
   <div class="sidebar-logo">
     <span class="logo-icon">⬡</span>
-    <span class="logo-text">Proto<strong>Cotrol</strong></span>
+    <span class="logo-text">Proto<strong>Control</strong></span>
   </div>
   <nav class="sidebar-nav">
     <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span> Dashboard</button>
@@ -48,11 +49,7 @@
   </nav>
   <div class="sidebar-footer">
     <div class="usuario-info" id="usuarioInfo"></div>
-    <img
-    src="https://www.digisat.com.br/static/img/Logo%20branca.png"
-    alt="Logo Digisat"
-    class="sidebar-footer-logo"
-  />
+    <img src="https://www.digisat.com.br/static/img/Logo%20branca.png" alt="Logo Digisat" class="sidebar-footer-logo" />
     <button class="btn-logout" onclick="fazerLogout()">Sair</button>
   </div>
 </aside>
@@ -65,6 +62,20 @@
 
   <!-- DASHBOARD -->
   <section class="page active" id="page-dashboard">
+    <div class="dashboard-toolbar">
+      <div class="dash-filtro-mes">
+        <label class="field-label" style="display:inline;margin-right:8px">Mês:</label>
+        <select class="field-input select-sm" id="dashFiltroMes">
+          <option value="">Todos</option>
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+          <option value="3">Março</option><option value="4">Abril</option>
+          <option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option>
+          <option value="9">Setembro</option><option value="10">Outubro</option>
+          <option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </div>
+    </div>
     <div class="stats-grid">
       <div class="stat-card accent">
         <div class="stat-label">Pendentes</div>
@@ -105,28 +116,30 @@
 
   <!-- PROTOCOLOS -->
   <section class="page" id="page-protocolos">
-    <div class="toolbar">
-      <input type="text" class="search-input" id="searchInput" placeholder="Buscar protocolo, revenda, analista..." />
-      <div class="filter-tabs">
-        <button class="filter-tab active" data-filter="false">Pendentes</button>
-        <button class="filter-tab" data-filter="true">Concluídos</button>
-        <button class="filter-tab" data-filter="">Todos</button>
+    <div class="page-protocolos-filters">
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar protocolo, revenda, analista..." />
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="false">Pendentes</button>
+          <button class="filter-tab" data-filter="true">Concluídos</button>
+          <button class="filter-tab" data-filter="">Todos</button>
+        </div>
       </div>
-    </div>
-    <div class="toolbar" style="margin-top:-10px">
-      <div class="date-filters">
-        <select class="field-input select-sm" id="filtroMes">
-          <option value="">Todos os meses</option>
-          <option value="1">Janeiro</option><option value="2">Fevereiro</option>
-          <option value="3">Março</option><option value="4">Abril</option>
-          <option value="5">Maio</option><option value="6">Junho</option>
-          <option value="7">Julho</option><option value="8">Agosto</option>
-          <option value="9">Setembro</option><option value="10">Outubro</option>
-          <option value="11">Novembro</option><option value="12">Dezembro</option>
-        </select>
-        <input type="date" class="field-input select-sm" id="filtroInicio" />
-        <input type="date" class="field-input select-sm" id="filtroFim" />
-        <button class="btn btn-ghost" onclick="limparFiltrosData()">Limpar</button>
+      <div class="toolbar" style="margin-top:-10px">
+        <div class="date-filters">
+          <select class="field-input select-sm" id="filtroMes">
+            <option value="">Todos os meses</option>
+            <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+            <option value="3">Março</option><option value="4">Abril</option>
+            <option value="5">Maio</option><option value="6">Junho</option>
+            <option value="7">Julho</option><option value="8">Agosto</option>
+            <option value="9">Setembro</option><option value="10">Outubro</option>
+            <option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+          <input type="date" class="field-input select-sm" id="filtroInicio" />
+          <input type="date" class="field-input select-sm" id="filtroFim" />
+          <button class="btn btn-ghost" onclick="limparFiltrosData()">Limpar</button>
+        </div>
       </div>
     </div>
     <div class="table-wrap">
@@ -147,6 +160,7 @@
     <div class="import-area" id="importArea">
       <div class="import-icon">↑</div>
       <div class="import-label">Arraste o CSV aqui ou clique para selecionar</div>
+      <div class="import-sub">Filtro: RESOLVIDO = "Não"</div>
       <input type="file" id="fileInput" accept=".csv" hidden />
       <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Selecionar arquivo</button>
     </div>
@@ -156,15 +170,15 @@
   <!-- REVENDAS -->
   <section class="page" id="page-revendas">
     <div class="toolbar">
-      <span></span>
+      <input type="text" class="search-input" id="searchRevenda" placeholder="Buscar por nome ou CNPJ..." />
       <button class="btn btn-primary" id="btnNovaRevenda">+ Nova Revenda</button>
     </div>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
-          <tr><th>#</th><th>Nome da Revenda</th><th>Telefone / WhatsApp</th><th>Cadastrado em</th><th></th></tr>
+          <tr><th>#</th><th>Nome da Revenda</th><th>CNPJ</th><th>Telefone / WhatsApp</th><th>Cadastrado em</th><th></th></tr>
         </thead>
-        <tbody id="revTableBody"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
+        <tbody id="revTableBody"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -232,9 +246,12 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="gerarMensagemWhatsApp()">📱 WhatsApp</button>
-      <button class="btn btn-primary modal-analista-only" onclick="salvarProtocolo()">Salvar</button>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-danger modal-analista-only" onclick="deletarDoModal()">Deletar</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="gerarMensagemWhatsApp()">📱 WhatsApp</button>
+        <button class="btn btn-primary modal-analista-only" onclick="salvarProtocolo()">Salvar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -251,6 +268,10 @@
       <div class="field-group">
         <label class="field-label">Nome da Revenda</label>
         <input type="text" class="field-input" id="revendaNome" placeholder="Ex: Distribuidora Sul Ltda" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">CNPJ</label>
+        <input type="text" class="field-input" id="revendaCnpj" placeholder="Ex: 00.000.000/0001-00" />
       </div>
       <div class="field-group">
         <label class="field-label">Telefone / WhatsApp</label>
