@@ -16,9 +16,7 @@ let charts           = {};
 /* ── INIT ─────────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   iniciarRelogio();
-  configurarEventos(); // chamado UMA única vez aqui
-
-  // Enter no login
+  configurarEventos(); 
   document.getElementById('senhaInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') fazerLogin();
   });
@@ -26,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') fazerLogin();
   });
 
-  // Verifica sessão salva
   const sessao = sessionStorage.getItem('protocolo_sessao');
   if (sessao) {
     try {
@@ -87,7 +84,6 @@ function iniciarApp(login, p) {
   document.getElementById('appWrapper').classList.remove('hidden');
   document.getElementById('usuarioInfo').textContent = login + ' · ' + (p === 'analista' ? 'Analista' : 'Visualização');
 
-  // Força visibilidade correta de cada item de menu
   document.querySelectorAll('.nav-analista').forEach(el => {
     el.style.cssText = p === 'analista' ? 'display:flex !important' : 'display:none !important';
   });
@@ -97,7 +93,6 @@ function iniciarApp(login, p) {
 
 function fazerLogout() {
   sessionStorage.removeItem('protocolo_sessao');
-  // Recarrega a página completamente para limpar qualquer estado residual
   window.location.reload();
 }
 
@@ -380,7 +375,6 @@ async function abrirProtocolo(id) {
     chkContato.checked = p.contato_realizado;
     document.getElementById('toggleContatoLabel').textContent = p.contato_realizado ? 'Sim' : 'Não';
 
-    // Permissões: leitura não pode editar
     const soLeitura = perfil !== 'analista';
     document.getElementById('modalObs').disabled      = soLeitura;
     document.getElementById('modalConcluido').disabled = soLeitura;

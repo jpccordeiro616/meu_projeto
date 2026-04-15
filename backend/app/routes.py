@@ -53,7 +53,6 @@ CSV_COLUNAS = {
     "numero_telefone":  "NUMEROTELEFONE",
     "tecnico_revenda":  "TECNICOREVENDA",
     "modulo":           "MODULO",
-    # Novos campos de telefone da revenda
     "revcelular":       "REVCELULAR",
     "revtelefone":      "REVTELEFONE",
 }
@@ -253,7 +252,6 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
             revenda_obj = db.query(models.Revenda).filter(
                 models.Revenda.nome.ilike(nome_revenda)
             ).first()
-            # Cria automaticamente se não existir
             if not revenda_obj:
                 telefone_rev = _telefone_revenda(row, headers_lower)
                 if telefone_rev:
@@ -264,7 +262,6 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
                     db.add(revenda_obj)
                     db.flush()  # gera o ID sem commitar
 
-        # Telefone: REVCELULAR → REVTELEFONE → NUMEROTELEFONE
         telefone = _telefone_revenda(row, headers_lower)
 
         protocolo = models.Protocolo(
@@ -343,7 +340,6 @@ def obter_stats(mes: Optional[int] = Query(None), db: Session = Depends(get_db))
     from sqlalchemy import extract, func as sqlfunc, case
     ano_atual = datetime.now().year
 
-    # Filtro base por mês se fornecido
     q_base = db.query(models.Protocolo)
     if mes:
         q_base = q_base.filter(extract('month', models.Protocolo.datahora) == mes)
