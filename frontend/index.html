@@ -1,21 +1,291 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Meu Projeto</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protocolos · Painel de Controle</title>
+  <link rel="icon" type="image/png" href="https://novosite.ddns.digisat.com.br/static/master/imagens/favicon/d.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <h1>Minha aplicação</h1>
 
-    <button id="botao">Testar API</button>
-    <p id="resultado"></p>
+<!-- LOGIN -->
+<div id="telaLogin" class="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-icon">⬡</span>
+      <span class="login-titulo">Proto<strong>Control</strong></span>
+    </div>
+    <div class="login-sub">Sistema de Controle de Protocolos</div>
+    <div class="field-group">
+      <label class="field-label">Login</label>
+      <input type="text" class="field-input" id="loginInput" placeholder="seu login" autocomplete="username" />
+    </div>
+    <div class="field-group">
+      <label class="field-label">Senha</label>
+      <input type="password" class="field-input" id="senhaInput" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <div class="login-erro hidden" id="loginErro">Login ou senha inválidos.</div>
+    <button class="btn btn-primary login-btn" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
 
-    <script src="script.js"></script>
-    <input type="text" id="nome" placeholder="Nome">
-    <input type="email" id="email" placeholder="Email">
-    <button id="salvar">Salvar</button>
-    <p id="resultado"></p>
+<!-- APP -->
+<div id="appWrapper" class="hidden">
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-icon">⬡</span>
+    <span class="logo-text">Proto<strong>Control</strong></span>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span> Dashboard</button>
+    <button class="nav-item" data-page="protocolos"><span class="nav-icon">≡</span> Protocolos</button>
+    <button class="nav-item nav-analista" data-page="importar"><span class="nav-icon">↑</span> Importar CSV</button>
+    <button class="nav-item nav-analista" data-page="revendas"><span class="nav-icon">◈</span> Revendas</button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="usuario-info" id="usuarioInfo"></div>
+    <img src="https://www.digisat.com.br/static/img/Logo%20branca.png" alt="Logo Digisat" class="sidebar-footer-logo" />
+    <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+  </div>
+</aside>
 
+<main class="main">
+  <header class="topbar">
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div class="topbar-actions"><span class="topbar-time" id="topbarTime"></span></div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <section class="page active" id="page-dashboard">
+    <div class="dashboard-toolbar">
+      <div class="dash-filtro-mes">
+        <label class="field-label" style="display:inline;margin-right:8px">Mês:</label>
+        <select class="field-input select-sm" id="dashFiltroMes">
+          <option value="">Todos</option>
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+          <option value="3">Março</option><option value="4">Abril</option>
+          <option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option>
+          <option value="9">Setembro</option><option value="10">Outubro</option>
+          <option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card accent">
+        <div class="stat-label">Pendentes</div>
+        <div class="stat-value" id="statPendentes">—</div>
+        <div class="stat-sub">aguardando ação</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Concluídos</div>
+        <div class="stat-value" id="statConcluidos">—</div>
+        <div class="stat-sub">resolvidos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-sub">protocolos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Revendas</div>
+        <div class="stat-value" id="statRevendas">—</div>
+        <div class="stat-sub">cadastradas</div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card chart-pizza">
+        <div class="chart-title">% Resolvidos</div>
+        <canvas id="chartConclusao"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Pendentes por Analista</div>
+        <canvas id="chartTecnico"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Pendentes por Revenda</div>
+        <canvas id="chartRevenda"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROTOCOLOS -->
+  <section class="page" id="page-protocolos">
+    <div class="page-protocolos-filters">
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar protocolo, revenda, analista..." />
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="false">Pendentes</button>
+          <button class="filter-tab" data-filter="true">Concluídos</button>
+          <button class="filter-tab" data-filter="">Todos</button>
+        </div>
+      </div>
+      <div class="toolbar" style="margin-top:-10px">
+        <div class="date-filters">
+          <select class="field-input select-sm" id="filtroMes">
+            <option value="">Todos os meses</option>
+            <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+            <option value="3">Março</option><option value="4">Abril</option>
+            <option value="5">Maio</option><option value="6">Junho</option>
+            <option value="7">Julho</option><option value="8">Agosto</option>
+            <option value="9">Setembro</option><option value="10">Outubro</option>
+            <option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+          <input type="date" class="field-input select-sm" id="filtroInicio" />
+          <input type="date" class="field-input select-sm" id="filtroFim" />
+          <button class="btn btn-ghost" onclick="limparFiltrosData()">Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Protocolo</th><th>Data/Hora</th><th>Revenda</th><th>Técnico</th>
+            <th>Problema</th><th>Contato</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="protTableBody"><tr><td colspan="8" class="empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- IMPORTAR -->
+  <section class="page" id="page-importar">
+    <div class="import-area" id="importArea">
+      <div class="import-icon">↑</div>
+      <div class="import-label">Arraste o CSV aqui ou clique para selecionar</div>
+      <div class="import-sub">Filtro: RESOLVIDO = "Não"</div>
+      <input type="file" id="fileInput" accept=".csv" hidden />
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Selecionar arquivo</button>
+    </div>
+    <div class="import-result hidden" id="importResult"></div>
+  </section>
+
+  <!-- REVENDAS -->
+  <section class="page" id="page-revendas">
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchRevenda" placeholder="Buscar por nome ou CNPJ..." />
+      <button class="btn btn-primary" id="btnNovaRevenda">+ Nova Revenda</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>Nome da Revenda</th><th>CNPJ</th><th>Telefone / WhatsApp</th><th>Cadastrado em</th><th></th></tr>
+        </thead>
+        <tbody id="revTableBody"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+</div>
+
+<!-- MODAL PROTOCOLO -->
+<div class="modal-overlay hidden" id="modalProtocolo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Protocolo <span id="modalNumero"></span></div>
+      <button class="modal-close" onclick="fecharModal('modalProtocolo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Data/Hora</div>
+          <div class="info-value" id="modalDatahora"></div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Revenda</div>
+          <div class="info-value" id="modalRevendaNome"></div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Analista</div>
+          <div class="info-value" id="modalAnalista"></div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Técnico</div>
+          <div class="info-value" id="modalTecnico"></div>
+        </div>
+        <div class="info-item full">
+          <div class="info-label">Problema</div>
+          <div class="info-value" id="modalProblema"></div>
+        </div>
+        <div class="info-item full">
+          <div class="info-label">Solução registrada</div>
+          <div class="info-value" id="modalSolucao"></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Observação</label>
+        <textarea class="field-input" id="modalObs" rows="3" placeholder="Adicionar observação..."></textarea>
+      </div>
+      <div class="two-toggles">
+        <div class="field-group">
+          <label class="field-label">Contato realizado</label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="modalContato" />
+              <span class="toggle-slider toggle-blue"></span>
+            </label>
+            <span class="toggle-label" id="toggleContatoLabel">Não</span>
+          </div>
+        </div>
+        <div class="field-group modal-analista-only">
+          <label class="field-label">Status</label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="modalConcluido" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label" id="toggleLabel">Pendente</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-danger modal-analista-only" onclick="deletarDoModal()">Deletar</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" onclick="gerarMensagemWhatsApp()">📱 WhatsApp</button>
+        <button class="btn btn-primary modal-analista-only" onclick="salvarProtocolo()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REVENDA -->
+<div class="modal-overlay hidden" id="modalRevenda">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="modalRevendaTitulo">Nova Revenda</div>
+      <button class="modal-close" onclick="fecharModal('modalRevenda')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="revendaEditId" />
+      <div class="field-group">
+        <label class="field-label">Nome da Revenda</label>
+        <input type="text" class="field-input" id="revendaNome" placeholder="Ex: Distribuidora Sul Ltda" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">CNPJ</label>
+        <input type="text" class="field-input" id="revendaCnpj" placeholder="Ex: 00.000.000/0001-00" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Telefone / WhatsApp</label>
+        <input type="text" class="field-input" id="revendaTelefone" placeholder="Ex: 41999887766" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModal('modalRevenda')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarRevenda()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+<script src="script.js?v=4"></script>
 </body>
 </html>
