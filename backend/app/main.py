@@ -32,7 +32,6 @@ if FRONTEND_DIR.exists():
     def serve_frontend():
         return str(FRONTEND_DIR / "index.html")
 
-    # Redireciona qualquer rota não-API para o index.html (SPA fallback)
     @app.get("/{full_path:path}", response_class=FileResponse)
     def spa_fallback(full_path: str):
         arquivo = FRONTEND_DIR / full_path

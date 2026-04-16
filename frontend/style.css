@@ -143,7 +143,6 @@ body {
 /* ── TOOLBAR ──────────────────────────────────────────────────────────────── */
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 
-/* Filtros sticky — ficam logo abaixo da topbar (60px) */
 .page-protocolos-filters {
   position: sticky;
   top: 60px;
