@@ -5,6 +5,7 @@ from typing import Optional
 import csv
 import io
 from datetime import datetime, date
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from app.database import get_db
@@ -84,9 +85,13 @@ def parse_datahora(valor: str) -> Optional[datetime]:
         "%d-%m-%Y %H:%M:%S", "%d-%m-%Y %H:%M",
         "%d/%m/%Y", "%Y-%m-%d",
     ]
+    
+    fuso_br = ZoneInfo("America/Sao_Paulo") 
+    
     for fmt in formatos:
         try:
-            return datetime.strptime(valor.strip(), fmt)
+            dt = datetime.strptime(valor.strip(), fmt)
+            return dt.replace(tzinfo=fuso_br) 
         except ValueError:
             continue
     return None
@@ -239,12 +244,18 @@ async def importar_csv(file: UploadFile = File(...), db: Session = Depends(get_d
             ja_existentes += 1
             continue
 
+        # 1. Puxa a string da data do CSV (ESTA FOI A LINHA QUE SUMIU!)
         dh_raw = _col(row, headers_lower, "datahora")
+        
+        # 2. Faz o parse já aplicando o fuso horário (com a função nova)
         dh = parse_datahora(dh_raw) if dh_raw else None
+        
+        # 3. Se a data veio vazia ou num formato muito louco, usa o horário atual
         if not dh:
             if dh_raw:
                 erros.append(f"Linha {i}: data '{dh_raw}' não reconhecida, usando agora.")
-            dh = datetime.now()
+            # Pega o momento atual já no fuso do Brasil
+            dh = datetime.now(ZoneInfo("America/Sao_Paulo"))
 
         nome_revenda = _col(row, headers_lower, "revenda")
         revenda_obj = None

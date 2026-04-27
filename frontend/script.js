@@ -246,7 +246,7 @@ function renderizarGraficos(stats) {
   });
 
   // ── Gráfico 2: Pendentes por Analista ────────────────────────────────────
-  const pt = stats.por_analista || [];
+  const pt = (stats.por_analista || []).slice(0, 10);
   charts.analista = new Chart(document.getElementById('chartTecnico'), {
     type: 'bar',
     data: {
@@ -362,7 +362,7 @@ async function abrirProtocolo(id) {
     document.getElementById('modalDatahora').textContent    = formatarData(p.datahora);
     document.getElementById('modalRevendaNome').textContent = p.revenda || '—';
     document.getElementById('modalAnalista').textContent    = p.analista || '—';
-    document.getElementById('modalTecnico').textContent     = p.tecnico_nome || '—';
+    document.getElementById('modalTecnico').textContent     = p.tecnico_revenda || '—';
     document.getElementById('modalProblema').textContent    = p.problema || '—';
     document.getElementById('modalSolucao').textContent     = p.solucao || '—';
     document.getElementById('modalObs').value               = p.observacao || '';
