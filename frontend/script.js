@@ -103,7 +103,7 @@ function navegarPara(pagina) {
   document.getElementById(`page-${pagina}`)?.classList.add('active');
   document.querySelector(`[data-page="${pagina}"]`)?.classList.add('active');
 
-  const titulos = { dashboard: 'Dashboard', protocolos: 'Protocolos', importar: 'Importar CSV', revendas: 'Revendas' };
+  const titulos = { dashboard: 'Dashboard', protocolos: 'Protocolos', importar: 'Importar CSV', revendas: 'Revendas', relatorios: 'Relatorios' };
   document.getElementById('topbarTitle').textContent = titulos[pagina] || pagina;
 
   if (pagina === 'dashboard')  carregarDashboard();

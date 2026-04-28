@@ -396,7 +396,7 @@ def obter_relatorios(mes: Optional[int] = Query(None), db: Session = Depends(get
     q_modulo = db.query(
         models.Protocolo.modulo,
         sqlfunc.count(models.Protocolo.id).label('total')
-    ).filter(models.Protocolo.concluido == False)
+    ).filter(models.Protocolo.modulo != None)
 
     if mes:
         q_modulo = q_modulo.filter(extract('month', models.Protocolo.datahora) == mes)
@@ -409,10 +409,11 @@ def obter_relatorios(mes: Optional[int] = Query(None), db: Session = Depends(get
     )
 
     por_modulo = []
+    total_modulos = sum(r.total for r in q_modulo)
     for row in q_modulo:
         nome  = (row.modulo or '').strip() or 'Sem módulo'
         total = row.total
-        pct   = round(total / total_pendentes * 100, 1) if total_pendentes else 0
+        pct = round(total / total_modulos * 100, 1) if total_modulos else 0
         por_modulo.append({"nome": nome, "total": total, "pct": pct})
 
     return {
