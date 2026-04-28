@@ -351,6 +351,75 @@ def deletar_protocolo(protocolo_id: int, db: Session = Depends(get_db)):
     db.delete(p)
     db.commit()
 
+# ── Relatórios ────────────────────────────────────────────────────────────────
+
+@router.get("/stats/relatorios")
+def obter_relatorios(mes: Optional[int] = Query(None), db: Session = Depends(get_db)):
+    """
+    Retorna dados para os relatórios:
+    - por_analista: pendentes agrupados por analista, com contagem e % do total
+    - por_modulo:   pendentes agrupados por módulo, com contagem e % do total
+    """
+    from sqlalchemy import extract, func as sqlfunc
+
+    q_base = db.query(models.Protocolo).filter(models.Protocolo.concluido == False)
+
+    if mes:
+        q_base = q_base.filter(extract('month', models.Protocolo.datahora) == mes)
+
+    total_pendentes = q_base.count()
+
+    # ── Por analista ──────────────────────────────────────────────────────────
+    q_analista = db.query(
+        models.Protocolo.analista,
+        sqlfunc.count(models.Protocolo.id).label('total')
+    ).filter(models.Protocolo.concluido == False)
+
+    if mes:
+        q_analista = q_analista.filter(extract('month', models.Protocolo.datahora) == mes)
+
+    q_analista = (
+        q_analista
+        .group_by(models.Protocolo.analista)
+        .order_by(sqlfunc.count(models.Protocolo.id).desc())
+        .all()
+    )
+
+    por_analista = []
+    for row in q_analista:
+        nome  = (row.analista or '').strip() or 'Sem analista'
+        total = row.total
+        pct   = round(total / total_pendentes * 100, 1) if total_pendentes else 0
+        por_analista.append({"nome": nome, "total": total, "pct": pct})
+
+    # ── Por módulo ────────────────────────────────────────────────────────────
+    q_modulo = db.query(
+        models.Protocolo.modulo,
+        sqlfunc.count(models.Protocolo.id).label('total')
+    ).filter(models.Protocolo.concluido == False)
+
+    if mes:
+        q_modulo = q_modulo.filter(extract('month', models.Protocolo.datahora) == mes)
+
+    q_modulo = (
+        q_modulo
+        .group_by(models.Protocolo.modulo)
+        .order_by(sqlfunc.count(models.Protocolo.id).desc())
+        .all()
+    )
+
+    por_modulo = []
+    for row in q_modulo:
+        nome  = (row.modulo or '').strip() or 'Sem módulo'
+        total = row.total
+        pct   = round(total / total_pendentes * 100, 1) if total_pendentes else 0
+        por_modulo.append({"nome": nome, "total": total, "pct": pct})
+
+    return {
+        "total_pendentes": total_pendentes,
+        "por_analista":    por_analista,
+        "por_modulo":      por_modulo,
+    }
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
 

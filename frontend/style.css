@@ -301,3 +301,191 @@ body {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 8px 14px;
 }
+
+/* ── RELATÓRIOS ───────────────────────────────────────────────────────────────
+   Adicionar ao final do style.css
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Toolbar de filtros e abas */
+.rel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.rel-filtro-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+}
+
+.rel-abas {
+  display: flex;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.rel-aba {
+  padding: 9px 22px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.rel-aba:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.rel-aba:hover {
+  color: var(--text);
+  background: var(--bg3);
+}
+
+.rel-aba.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Cabeçalho com total */
+.rel-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.rel-total-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--bg2), #0f1e3a);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  white-space: nowrap;
+}
+
+.rel-total-num {
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.rel-total-lbl {
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rel-titulo {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+/* Painéis */
+.rel-painel {
+  display: none;
+}
+
+.rel-painel.active {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Tabela de relatórios — barra de progresso inline */
+.rel-table td {
+  padding: 13px 10px;
+}
+
+.rel-rank {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  width: 28px;
+  text-align: center;
+}
+
+.rel-nome {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rel-count {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.rel-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: var(--bg3);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.rel-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Cores alternadas para as barras */
+.rel-bar-fill.c0 { background: linear-gradient(90deg, #3b7fff, #60a5fa); }
+.rel-bar-fill.c1 { background: linear-gradient(90deg, #22c55e, #4ade80); }
+.rel-bar-fill.c2 { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.rel-bar-fill.c3 { background: linear-gradient(90deg, #ef4444, #f87171); }
+.rel-bar-fill.c4 { background: linear-gradient(90deg, #a855f7, #c084fc); }
+.rel-bar-fill.c5 { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+.rel-bar-fill.c6 { background: linear-gradient(90deg, #f97316, #fb923c); }
+.rel-bar-fill.c7 { background: linear-gradient(90deg, #ec4899, #f472b6); }
+.rel-bar-fill.c8 { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+.rel-bar-fill.c9 { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+
+.rel-pct {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Destaque para o 1º lugar */
+.rel-table tbody tr:first-child .rel-count {
+  color: var(--accent);
+}
+
+.rel-table tbody tr:first-child .rel-nome {
+  color: var(--text);
+  font-weight: 600;
+}

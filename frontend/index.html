@@ -44,6 +44,7 @@
   <nav class="sidebar-nav">
     <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span> Dashboard</button>
     <button class="nav-item" data-page="protocolos"><span class="nav-icon">≡</span> Protocolos</button>
+    <button class="nav-item" data-page="relatorios"><span class="nav-icon">◎</span> Relatórios</button>
     <button class="nav-item nav-analista" data-page="importar"><span class="nav-icon">↑</span> Importar CSV</button>
     <button class="nav-item nav-analista" data-page="revendas"><span class="nav-icon">◈</span> Revendas</button>
   </nav>
@@ -154,7 +155,79 @@
       </table>
     </div>
   </section>
-
+  <!-- RELATÓRIOS -->
+  <section class="page" id="page-relatorios">
+ 
+    <!-- Toolbar de filtros -->
+    <div class="rel-toolbar">
+      <div class="rel-filtro-wrap">
+        <label class="field-label" style="white-space:nowrap">Filtrar por mês:</label>
+        <select class="field-input select-sm" id="relFiltroMes">
+          <option value="">Todos os meses</option>
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+          <option value="3">Março</option><option value="4">Abril</option>
+          <option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option>
+          <option value="9">Setembro</option><option value="10">Outubro</option>
+          <option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </div>
+      <div class="rel-abas">
+        <button class="rel-aba active" data-rel="analista">Por Analista</button>
+        <button class="rel-aba" data-rel="modulo">Por Módulo</button>
+      </div>
+    </div>
+ 
+    <!-- Cabeçalho dinâmico -->
+    <div class="rel-header">
+      <div class="rel-total-badge">
+        <span class="rel-total-num" id="relTotalPendentes">—</span>
+        <span class="rel-total-lbl">pendentes no período</span>
+      </div>
+      <div class="rel-titulo" id="relTitulo">Pendentes por Analista</div>
+    </div>
+ 
+    <!-- Painel Analista -->
+    <div class="rel-painel active" id="rel-painel-analista">
+      <div class="table-wrap">
+        <table class="data-table rel-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Analista</th>
+              <th>Pendentes</th>
+              <th style="width:40%">Distribuição</th>
+              <th>% do Total</th>
+            </tr>
+          </thead>
+          <tbody id="relAnalistaBody">
+            <tr><td colspan="5" class="empty">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+ 
+    <!-- Painel Módulo -->
+    <div class="rel-painel" id="rel-painel-modulo">
+      <div class="table-wrap">
+        <table class="data-table rel-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Módulo</th>
+              <th>Pendentes</th>
+              <th style="width:40%">Distribuição</th>
+              <th>% do Total</th>
+            </tr>
+          </thead>
+          <tbody id="relModuloBody">
+            <tr><td colspan="5" class="empty">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+ 
+  </section>
   <!-- IMPORTAR -->
   <section class="page" id="page-importar">
     <div class="import-area" id="importArea">

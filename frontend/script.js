@@ -109,6 +109,7 @@ function navegarPara(pagina) {
   if (pagina === 'dashboard')  carregarDashboard();
   if (pagina === 'protocolos') carregarProtocolos();
   if (pagina === 'revendas')   carregarRevendas();
+  if (pagina === 'relatorios') carregarRelatorios()
 }
 
 /* ── EVENTOS ──────────────────────────────────────────────────────────────── */
@@ -179,6 +180,20 @@ function configurarEventos() {
       if (e.target === overlay) overlay.classList.add('hidden');
     });
   });
+
+  // Abas de relatório
+          document.querySelectorAll('.rel-aba').forEach(btn => {
+            btn.addEventListener('click', () => {
+              document.querySelectorAll('.rel-aba').forEach(b => b.classList.remove('active'));
+              document.querySelectorAll('.rel-painel').forEach(p => p.classList.remove('active'));
+              btn.classList.add('active');
+              const painel = btn.dataset.rel;
+              document.getElementById(`rel-painel-${painel}`)?.classList.add('active');
+              const titulos = { analista: 'Pendentes por Analista', modulo: 'Pendentes por Módulo' };
+              document.getElementById('relTitulo').textContent = titulos[painel] || '';
+            });
+          });
+          document.getElementById('relFiltroMes')?.addEventListener('change', () => carregarRelatorios());
 }
 
 function limparFiltrosData() {
@@ -601,4 +616,66 @@ function mostrarToast(msg, tipo = '') {
   el.className = `toast${tipo ? ' ' + tipo : ''}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.add('hidden'), 3500);
+}
+
+/* ── RELATÓRIOS ───────────────────────────────────────────────────────────── */
+async function carregarRelatorios() {
+  const mes = document.getElementById('relFiltroMes')?.value || '';
+  const url = mes ? `${API}/stats/relatorios?mes=${mes}` : `${API}/stats/relatorios`;
+ 
+  // Mostra loading nas duas tabelas
+  document.getElementById('relAnalistaBody').innerHTML =
+    `<tr><td colspan="5" class="empty">Carregando...</td></tr>`;
+  document.getElementById('relModuloBody').innerHTML =
+    `<tr><td colspan="5" class="empty">Carregando...</td></tr>`;
+ 
+  try {
+    const data = await fetchJSON(url);
+ 
+    document.getElementById('relTotalPendentes').textContent = data.total_pendentes;
+ 
+    renderizarTabelaRelatorio('relAnalistaBody', data.por_analista);
+    renderizarTabelaRelatorio('relModuloBody',   data.por_modulo);
+ 
+  } catch {
+    mostrarToast('Erro ao carregar relatórios', 'error');
+    document.getElementById('relAnalistaBody').innerHTML =
+      `<tr><td colspan="5" class="empty">Erro ao carregar dados.</td></tr>`;
+    document.getElementById('relModuloBody').innerHTML =
+      `<tr><td colspan="5" class="empty">Erro ao carregar dados.</td></tr>`;
+  }
+}
+ 
+function renderizarTabelaRelatorio(tbodyId, lista) {
+  const tbody = document.getElementById(tbodyId);
+ 
+  if (!lista || lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhum dado encontrado.</td></tr>`;
+    return;
+  }
+ 
+  // Anima as barras após inserir no DOM
+  tbody.innerHTML = lista.map((item, i) => {
+    const corClass = `c${i % 10}`;
+    return `
+      <tr>
+        <td class="rel-rank">${i + 1}</td>
+        <td><span class="rel-nome" title="${escapar(item.nome)}">${item.nome}</span></td>
+        <td><span class="rel-count">${item.total}</span></td>
+        <td>
+          <div class="rel-bar-wrap">
+            <div class="rel-bar-fill ${corClass}" style="width:0%" data-pct="${item.pct}"></div>
+          </div>
+        </td>
+        <td><span class="rel-pct">${item.pct}%</span></td>
+      </tr>
+    `;
+  }).join('');
+ 
+  // Anima as barras no próximo frame para a transição CSS funcionar
+  requestAnimationFrame(() => {
+    tbody.querySelectorAll('.rel-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.pct + '%';
+    });
+  });
 }
