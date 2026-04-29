@@ -310,12 +310,18 @@ body {
 
 /* ── RESPONSIVIDADE ───────────────────────────────────────────────────────── */
 .hamburger {
-  display: none; position: fixed; top: 14px; left: 14px; z-index: 200;
-  background: var(--bg2); border: 1px solid var(--border2);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-size: 18px; width: 38px; height: 38px;
-  align-items: center; justify-content: center;
-  cursor: pointer; line-height: 1;
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
 }
 .sidebar-backdrop {
   display: none; position: fixed; inset: 0;
@@ -427,6 +433,14 @@ body {
 
   .import-area { padding: 40px 20px; }
   .result-grid { grid-template-columns: repeat(2, 1fr); }
+
+  #revTableBody td:nth-child(2) {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 }
 
 @media (max-width: 480px) {

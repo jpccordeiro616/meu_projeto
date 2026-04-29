@@ -198,10 +198,12 @@ const hamburger = document.getElementById('hamburger');
 const backdrop  = document.getElementById('sidebarBackdrop');
 const sidebar   = document.querySelector('.sidebar');
 
-hamburger?.addEventListener('click', () => {
+hamburger?.addEventListener('click', (e) => {
+  e.stopPropagation();
   sidebar.classList.toggle('open');
   backdrop.classList.toggle('active');
 });
+
 backdrop?.addEventListener('click', () => {
   sidebar.classList.remove('open');
   backdrop.classList.remove('active');
