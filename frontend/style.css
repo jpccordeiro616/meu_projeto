@@ -435,12 +435,37 @@ body {
   .result-grid { grid-template-columns: repeat(2, 1fr); }
 
   #revTableBody td:nth-child(2) {
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
+  .topbar {
+    height: 56px;
+    padding: 0 16px 0 52px;
+}
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+}
+
+.stat-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.charts-grid {
+  width: 100%;
+  overflow: hidden;
+}
+
+.chart-card {
+  min-width: 0;
+  overflow: hidden;
+}
 }
 
 @media (max-width: 480px) {
