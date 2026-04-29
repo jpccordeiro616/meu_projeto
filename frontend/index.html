@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<button class="hamburger" id="hamburger">☰</button>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
 <!-- LOGIN -->
 <div id="telaLogin" class="login-overlay">
@@ -42,11 +44,11 @@
     <span class="logo-text">Proto<strong>Control</strong></span>
   </div>
   <nav class="sidebar-nav">
-    <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span> Dashboard</button>
-    <button class="nav-item" data-page="protocolos"><span class="nav-icon">≡</span> Protocolos</button>
-    <button class="nav-item" data-page="relatorios"><span class="nav-icon">◎</span> Relatórios</button>
-    <button class="nav-item nav-analista" data-page="importar"><span class="nav-icon">↑</span> Importar CSV</button>
-    <button class="nav-item nav-analista" data-page="revendas"><span class="nav-icon">◈</span> Revendas</button>
+    <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span><span class="nav-label"> Dashboard</span></button>
+    <button class="nav-item" data-page="protocolos"><span class="nav-icon">≡</span><span class="nav-label"> Protocolos</span></button>
+    <button class="nav-item" data-page="relatorios"><span class="nav-icon">◎</span><span class="nav-label"> Relatórios</span></button>
+    <button class="nav-item nav-analista" data-page="importar"><span class="nav-icon">↑</span><span class="nav-label"> Importar CSV</span></button>
+    <button class="nav-item nav-analista" data-page="revendas"><span class="nav-icon">◈</span><span class="nav-label"> Revendas</span></button>
   </nav>
   <div class="sidebar-footer">
     <div class="usuario-info" id="usuarioInfo"></div>
@@ -241,12 +243,14 @@
   </section>
 
   <!-- REVENDAS -->
-  <section class="page" id="page-revendas">
+<section class="page page-revendas" id="page-revendas">
+  <div class="page-revendas-filters">
     <div class="toolbar">
       <input type="text" class="search-input" id="searchRevenda" placeholder="Buscar por nome ou CNPJ..." />
       <button class="btn btn-primary" id="btnNovaRevenda">+ Nova Revenda</button>
     </div>
-    <div class="table-wrap">
+  </div>
+  <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr><th>#</th><th>Nome da Revenda</th><th>CNPJ</th><th>Telefone / WhatsApp</th><th>Cadastrado em</th><th></th></tr>

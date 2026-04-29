@@ -194,6 +194,19 @@ function configurarEventos() {
             });
           });
           document.getElementById('relFiltroMes')?.addEventListener('change', () => carregarRelatorios());
+const hamburger = document.getElementById('hamburger');
+const backdrop  = document.getElementById('sidebarBackdrop');
+const sidebar   = document.querySelector('.sidebar');
+
+hamburger?.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('active');
+});
+backdrop?.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('active');
+});
+
 }
 
 function limparFiltrosData() {
