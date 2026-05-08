@@ -404,6 +404,7 @@ async function abrirProtocolo(id) {
     document.getElementById('modalProblema').textContent    = p.problema || '—';
     document.getElementById('modalSolucao').textContent     = p.solucao || '—';
     document.getElementById('modalObs').value               = p.observacao || '';
+    document.getElementById('modalModulo').textContent = p.modulo || '—';
 
     const chkConcluido = document.getElementById('modalConcluido');
     chkConcluido.checked = p.concluido;

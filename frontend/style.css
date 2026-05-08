@@ -187,7 +187,8 @@ body {
 }
 
 .data-table { width: 100%; border-collapse: collapse; }
-.data-table thead tr { background: var(--bg3); border-bottom: 1px solid var(--border); }
+.data-table thead tr { background: var(--bg3); border-bottom: 1px solid var(--border); height: 40px; }
+.data-table thead th { background: var(--bg3); }
 
 .data-table thead th {
   padding: 10px 10px; text-align: left;
