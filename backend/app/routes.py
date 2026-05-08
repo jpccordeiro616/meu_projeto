@@ -103,10 +103,14 @@ def parse_datahora(valor: str) -> Optional[datetime]:
 def listar_revendas(busca: Optional[str] = Query(None), db: Session = Depends(get_db)):
     q = db.query(models.Revenda)
     if busca:
+        busca_limpa = ''.join(c for c in busca if c.isalnum())
         termo = f"%{busca}%"
+        termo_limpo = f"%{busca_limpa}%"
+        from sqlalchemy import func
         q = q.filter(
             models.Revenda.nome.ilike(termo) |
-            models.Revenda.cnpj.ilike(termo)
+            func.regexp_replace(models.Revenda.cnpj, '[^0-9]', '', 'g').ilike(termo_limpo) |
+            func.regexp_replace(models.Revenda.telefone, '[^0-9]', '', 'g').ilike(termo_limpo)
         )
     return q.order_by(models.Revenda.nome).all()
 
@@ -162,12 +166,20 @@ def listar_protocolos(
     if concluido is not None:
         q = q.filter(models.Protocolo.concluido == concluido)
     if busca:
+    # Remove caracteres não alfanuméricos para comparar sem máscara
+        busca_limpa = ''.join(c for c in busca if c.isalnum())
         termo = f"%{busca}%"
+        termo_limpo = f"%{busca_limpa}%"
+
+        from sqlalchemy import func
         q = q.filter(
             models.Protocolo.numero_protocolo.ilike(termo) |
             models.Protocolo.revenda.ilike(termo) |
             models.Protocolo.analista.ilike(termo) |
-            models.Protocolo.problema.ilike(termo)
+            models.Protocolo.problema.ilike(termo) |
+            models.Protocolo.modulo.ilike(termo) |
+            func.regexp_replace(models.Protocolo.cnpj, '[^0-9]', '', 'g').ilike(termo_limpo) |
+            func.regexp_replace(models.Protocolo.numero_telefone, '[^0-9]', '', 'g').ilike(termo_limpo)
         )
     if mes:
         from sqlalchemy import extract

@@ -117,6 +117,12 @@ function configurarEventos() {
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => navegarPara(btn.dataset.page));
   });
+  const mesAtual = new Date().getMonth() + 1;
+  const selMeses = ['dashFiltroMes', 'filtroMes', 'relFiltroMes'];
+  selMeses.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.value = mesAtual;
+});
 
   document.querySelectorAll('.filter-tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -363,6 +369,8 @@ async function carregarProtocolos() {
         <td title="${p.revenda || ''}">${p.revenda || '—'}</td>
         <td title="${p.tecnico_nome || p.analista || ''}">${p.tecnico_nome || p.analista || '—'}</td>
         <td title="${p.problema || ''}">${p.problema || '—'}</td>
+        <td style="text-align:center">
+</td>
         <td style="text-align:center">
           <span class="badge ${p.contato_realizado ? 'badge-contato' : 'badge-semcontato'}">
             ${p.contato_realizado ? 'Sim' : 'Não'}
